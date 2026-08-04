@@ -33,7 +33,7 @@
 - **AI 叙事**：天机阁（5 模型预设，默认 deepseek-chat）、加密存储、10s 超时试连、离线模板降级
 - **成瘾性玩法**：手札占候（8 卦）、今日要务（8 任务红印）、周间要务、陆家遗命（4 链）、谢七赌约（4 彩头）、市易务暗标（3 盲拍）、伙计小传（4 阶段）、商阶（7 段位）、局外成长（8 传承，独立 localStorage）、月度总结
 - **负反馈**：树大招风/集体涨薪/自然灾害/员工挖角/沈听澜使绊/阿昭偷钱/赊账跑路/钱庄挤兑
-- **新手引导**：21 引导点、三形式（手札弹窗/阿昭气泡/描金微光）、重读手札重置
+- **新手引导**：25 引导点（21 基础 + 里程碑：首次存款/跑商/排班/雇佣）、三形式（手札弹窗/阿昭气泡/描金微光）、重读手札重置
 - **八种结局**：一代商圣/皇商之路/归隐田园/商界教父/家道中落/权倾朝野/无人问津/执棋者（隐藏）
 - **UI 打磨**：12 面板切面切换、功能解锁 12 项、统一 modal-container 弹窗、action-feedback 浮动反馈、按钮点击/悬停反馈、formatMoney 金额取整、通知系统（3 条排队）
 
@@ -131,7 +131,7 @@
 ## 四、测试基线
 
 - 源项目：**1567 用例全绿**（119 文件）
-- 新项目：89 测试文件（+1 AI 全量接入）；实测 **1116 用例全绿**（2026-08-05 v1.1 整合验收：tsc 零错误 → 全量 1116 → build 串行通过）
+- 新项目：91 测试文件；实测 **1137 用例全绿**（2026-08-06 P2 里程碑引导验收：tsc 零错误 → 全量 1137 → build 串行通过 → 已上线）
 - vitest.config.ts 已裁剪（移除 memory/dialogue/map 覆盖率阈值），setup.ts 已去 map 夹具
 - tests 从 tsconfig 排除（沿用源做法，tsc 只查 src）
 - 稳定姿势：pool threads / minWorkers 1 / maxWorkers 2 / testTimeout 30s（已固化 config）
@@ -194,4 +194,23 @@
 | src/theme/tokens.ts | ANCIENT 设计令牌（唯一事实源） |
 | public/sw.js | network-first Service Worker（v7.0.0） |
 | scripts/validate-game-data.mjs | 数值校验脚本（开局容量/30 天不破产） |
-| tests/unit/ | 89 测试文件（1116 用例全绿） |
+| tests/unit/ | 91 测试文件（1137 用例全绿） |
+
+
+---
+
+## P2 里程碑引导 + 门面等级图标（2026-08-06）
+
+**目标**：把「首次存款/跑商/排班/雇佣」四个关键操作也纳入新手引导（此前只有 21 条基础引导），并让店铺门面随产业等级可视化成长。
+
+| 项 | 内容 | 关键文件 |
+|---|---|---|
+| 引导 ID | 新增 4 个：FIRST_DEPOSIT / FIRST_TRADE / FIRST_SCHEDULE / FIRST_HIRE（总数 21→25） | src/config/tang-tutorial-ids.ts |
+| 手札文案 | 4 条古风家书（钱庄存贷 / 跑商贱买贵卖 / 伙计轮值 / 雇佣帮手），kind=handbook | src/config/tang-tutorial-content.ts |
+| Store 接线 | depositToBank→FIRST_DEPOSIT、assignShift→FIRST_SCHEDULE、hireEmployee→FIRST_HIRE、executeTradeRun→FIRST_TRADE（均走 showTutorial 防重） | src/stores/tang-manager.ts |
+| 门面可视化 | 概览条「产业」chip 升级为「门面」：Lv1 街边🛖 → Lv2 坊间🏮 → Lv3 名楼/名坊🏯 → Lv4 名肆/名号🏛️ → Lv5 天下第一👑 | src/components/shop-overview-strip.tsx |
+| 测试 | 教程计数断言 21→25（含 ID 全集逐字 + kind 规则 24 条 handbook）；新增里程碑引导 3 用例（4 id 合法/文案完备/禁现代词 + 首次雇佣/排班接线） | tests/unit/systems/tang-tutorial.test.ts、tests/unit/stores/tang-manager-store.test.ts |
+
+**验收**：tsc 零错误 → 全量 **1137 用例全绿**（91 文件）→ build 静态导出成功 → 已推送上线（main @ `f04f9469`，gh-pages @ `e45ee634`）→ Playwright 真机冒烟：入口标题正确、开局全流程（性别/年龄/名字 → 开店方向 → 难度 A/B/C → 开张）可走通、**0 控制台错误**。
+
+**源项目零修改复核**：本轮工具脚本曾误在源项目（游戏开发）执行，已逐字回滚（tang-tutorial-content.ts / tang-tutorial.test.ts 与 tang-manager HEAD 完全一致，store 测试无指纹残留）。

@@ -2363,6 +2363,8 @@ export interface TangManagerStore extends TangGameState {
   fireEmployee: (id: string) => boolean;
   /** 涨薪（5a 2.4）：满意度 +5~10、月钱 +1~3 */
   raiseSalary: (id: string) => boolean;
+  /** 给阿昭加月钱（K6：满意 +10、好感 +5、花 5 两） */
+  azhaoRaiseSalary: () => boolean;
   /** 安排休假（5a 2.4）：满意度 +3、当日不工作（不贡献技能/满意度/不过劳） */
   arrangeRestDay: (id: string) => boolean;
   /** 揭露员工背景（5a 2.4/2.5）：backgroundRevealed=true，应用 hiddenFlaw 负面效果（占位） */

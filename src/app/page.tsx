@@ -36,6 +36,7 @@ import { StoryModal } from '@/components/tang-manager/story-modal';
 import { StaffReminderHost } from '@/components/tang-manager/staff-reminder-host';
 import { ShopOverviewStrip } from '@/components/shop-overview-strip';
 import { SettlementSummaryModal } from '@/components/settlement-summary-modal';
+import { HexagramCard } from '@/components/hexagram-card';
 import { ShopManagePanel } from '@/components/shop-manage-panel';
 import { GameErrorBoundary } from '@/components/game-error-boundary';
 import { EventPanel } from '@/components/event-panel';
@@ -379,6 +380,7 @@ export default function TangManagerPage(): React.ReactElement {
           <EndingOverlay />
       <StoryModal />
       <SettlementSummaryModal />
+      <HexagramCard />
           {/* 功能解锁浮现提示（v1.0 模块二；无新解锁时返回 null） */}
           <FeatureUnlockToast />
           {/* 通知弹条（v1.0 模块四；右上角 3s；无通知时返回空） */}

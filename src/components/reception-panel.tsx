@@ -100,6 +100,24 @@ export function ReceptionPanel(): React.ReactElement {
         <StrategySelector />
       </TutorialHighlight>
 
+      {/* 今日要务（TANG-ADD-001 · 2026-08-06 补 UI：清晨生成但此前无展示） */}
+      {(state.todayTasks ?? []).length > 0 && (
+        <div className="rounded-xl px-3 py-2" style={{ backgroundColor: ANCIENT.card, border: `1px solid ${ANCIENT.border}` }}>
+          <div className="text-xs font-bold tracking-[0.3em]" style={{ color: ANCIENT.secondary }}>今日要务</div>
+          <div className="mt-1.5 flex flex-col gap-1">
+            {(state.todayTasks ?? []).map((task) => {
+              const done = (state.todayTasksCompleted ?? []).includes(task.id);
+              return (
+                <div key={task.id} className="flex items-center justify-between gap-2 text-xs">
+                  <span style={{ color: done ? ANCIENT.border : ANCIENT.text, textDecoration: done ? 'line-through' : 'none' }}>{task.title}</span>
+                  <span className="rounded px-1.5 py-px text-[10px] font-bold" style={{ backgroundColor: done ? ANCIENT.primary : ANCIENT.background, color: done ? '#FFFFFF' : ANCIENT.secondary, border: `1px solid ${ANCIENT.border}` }}>{done ? (task.stampText || '已了') : '未了'}</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* TANG-TRF-001：接待 / 预购订单 双标签 */}
       <div className="flex gap-2 text-xs tracking-widest">
         <button

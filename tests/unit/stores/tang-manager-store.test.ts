@@ -490,3 +490,29 @@ describe('Step 5b · 打烊结算弹窗（settleDay 后置开）', () => {
     expect(useTangManagerStore.getState().settlementPopupOpen).toBe(false);
   });
 });
+describe('Step 5b · 今日要务与阿昭涨薪（2026-08-06 补 UI 后的逻辑）', () => {
+  it('startNewDay 后 todayTasks 非空（今日要务可展示）', () => {
+    const store = useTangManagerStore.getState();
+    store.initByDifficulty('B');
+    expect(useTangManagerStore.getState().todayTasks ?? []).toHaveLength(0);
+    store.startNewDay();
+    const tasks = useTangManagerStore.getState().todayTasks ?? [];
+    expect(tasks.length).toBeGreaterThan(0);
+  });
+
+  it('azhaoRaiseSalary：银两足够 → 满意+10/好感+5、扣 5 两；不足拒绝', () => {
+    const store = useTangManagerStore.getState();
+    store.initByDifficulty('B');
+    useTangManagerStore.setState({ silver: 100, gold: 100 });
+    const satBefore = useTangManagerStore.getState().xiaoerSatisfaction ?? 60;
+    const favorBefore = useTangManagerStore.getState().xiaoerFavor ?? 0;
+    expect(store.azhaoRaiseSalary()).toBe(true);
+    const s = useTangManagerStore.getState();
+    expect(s.silver).toBe(95);
+    expect(s.xiaoerSatisfaction).toBe(Math.min(100, satBefore + 10));
+    expect(s.xiaoerFavor).toBe(Math.min(100, favorBefore + 5));
+    // 银两不足拒绝
+    useTangManagerStore.setState({ silver: 3, gold: 3 });
+    expect(store.azhaoRaiseSalary()).toBe(false);
+  });
+});

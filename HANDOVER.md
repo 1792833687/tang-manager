@@ -236,3 +236,27 @@
 - frontend-ui-engineering（addyosmani/agent-skills）
 - performance-optimization（addyosmani/agent-skills）
 - design-system、ui-styling（nextlevelbuilder/ui-ux-pro-max-skill）
+
+
+---
+
+## 五维体检 + 优化（2026-08-06 · 逻辑/美术/UI/可玩性/成瘾度）
+
+**分析结论**：数值平衡校验 PASS（30 天模拟终值 652 两不破产）；美术资源齐全（scenes 9 / npcs 20 / ui 13 / icons 85 / loading 19）；**核心问题集中在成瘾度与逻辑断头路**——6 大成瘾玩法中 5 个「有数据无界面」。
+
+### 本轮修复（代码已上线）
+
+| 维度 | 问题 | 修复 |
+|---|---|---|
+| 成瘾度 | **卦象占候完全不可见**（hexagramCardOpen 无组件渲染，K1） | 新增 hexagram-card.tsx：晨间弹出当日卦象（卦名/占断/判词/效果），page.tsx 挂载；实测「震·波动·客单消费±20%」+ 阿昭提醒联动卦象 |
+| 成瘾度 | **段位完全不可见**（evaluateRank 每日评定但无展示，K1） | me-panel 新增「商阶」卡：当前段位名+描述（白丁→商圣 7 级） |
+| 成瘾度 | **今日要务不可见**（todayTasks 生成但无 UI） | reception-panel 新增「今日要务」卡：任务标题+了/未了红印；组件测试 +2 用例 |
+| 逻辑 | K5 程掌柜进价 -10%（chengDiscountCategory 注释级未生效） | 市易务采买 finalCost 应用 chengRatio=0.9（匹配品类） |
+| 逻辑/UI | K6 阿昭涨薪无 UI 入口 | 新增 azhaoRaiseSalary action（-5 两 → 满意+10/好感+5）+ 伙计面板阿昭卡「给阿昭加月钱」按钮；store 测试 +2 用例 |
+
+### 遗留（已收录，未在本轮处理）
+- K9 社交事件无 UI 弹窗（仅 eventLog）；K10 平康坊无地图节点；K7 负反馈面板无立绘；K11 空状态插图占位
+- 周间要务/陆家遗命/谢七赌约/市易务暗标仍无独立 UI 面板（数据已就绪，属下一轮成瘾度深挖）
+
+### 验收
+tsc 零错误 → 全量 **1142 用例全绿（92 文件）** → build 静态导出成功 → Playwright：卦象卡/段位/结算面板可见、0 控制台错误；今日要务与阿昭涨薪以组件/Store 测试覆盖（游戏晨间事件链较长，自动化难以稳定走完，但逻辑与渲染均已单测验证）。

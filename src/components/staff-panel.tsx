@@ -124,6 +124,7 @@ export function StaffPanel(): React.ReactElement {
   const employees = useTangManagerStore((s) => s.employees);
   const maxEmployees = useTangManagerStore((s) => s.maxEmployees);
   const praiseEmployee = useTangManagerStore((s) => s.praiseEmployee);
+  const azhaoRaiseSalary = useTangManagerStore((s) => s.azhaoRaiseSalary);
   const fireEmployee = useTangManagerStore((s) => s.fireEmployee);
   const [sub, setSub] = useState<SubPanel>('none');
   const [fireTarget, setFireTarget] = useState<Employee | null>(null);
@@ -158,6 +159,19 @@ export function StaffPanel(): React.ReactElement {
               <span className="flex-1">满意 {xiaoerSatisfaction}%</span>
               <span className="flex-1">好感 {xiaoerFavor}%</span>
             </div>
+            {!xiaoerGone && (
+              <button
+                type="button"
+                onClick={() => {
+                  const ok = azhaoRaiseSalary();
+                  pushActionFeedback(ok ? '阿昭的月钱加了一份，笑逐颜开' : '手头拮据，暂且加不起月钱', ok ? 'success' : 'warning');
+                }}
+                className="mt-1.5 w-full rounded px-2 py-1 text-[11px] font-bold tracking-widest"
+                style={{ backgroundColor: ANCIENT.gold, color: '#FFFFFF' }}
+              >
+                给阿昭加月钱（5两）
+              </button>
+            )}
           </div>
         </div>
       </AncientCard>

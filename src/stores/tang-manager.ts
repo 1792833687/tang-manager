@@ -1003,6 +1003,7 @@ function npcIntelContextOf(s: TangManagerStore): Parameters<typeof performBuyInf
   | 'addMessage'
   | 'dismissMessage'
   | 'purchaseShopAsset'
+  | 'azhaoRaiseSalary'
 > {
   const b = getDifficultyParams('B');
   return {
@@ -4958,7 +4959,9 @@ export const useTangManagerStore = create<TangManagerStore>()(
         };
         // TANG-ADD-001 占候接线（采买）：巽卦 顺风 → 进货价 ×0.9
         const hexCost = applyHexagramEffect(s.todayHexagram, { procurementCost: r.cost });
-        const finalCost = Math.round((hexCost.procurementCost ?? r.cost) * 100) / 100;
+        // K5 修复（2026-08-06）：程掌柜进价 -10% 接线（此前仅 store 字段 chengDiscountCategory 注释级未生效）
+        const chengRatio = s.chengDiscountCategory && incoming.category === s.chengDiscountCategory ? 0.9 : 1;
+        const finalCost = Math.round(((hexCost.procurementCost ?? r.cost) * chengRatio) * 100) / 100;
         set((st) =>
           syncCompat(st, {
             silver: Math.max(0, st.silver - finalCost),
@@ -5440,6 +5443,22 @@ export const useTangManagerStore = create<TangManagerStore>()(
           ),
           eventLog: [...st.eventLog, `emp-raise:${target.name}:${s.day}`],
         }));
+        return true;
+      },
+      /** 给阿昭加月钱（K6 修复：此前无 UI 入口；花 5 两 → 满意 +10、好感 +5，clamp 0-100） */
+      azhaoRaiseSalary: (): boolean => {
+        const s = get();
+        if (s.phase !== 'playing' || s.silver < 5) {
+          return false;
+        }
+        set((st) =>
+          syncCompat(st, {
+            silver: Math.max(0, st.silver - 5),
+            xiaoerSatisfaction: clamp((st.xiaoerSatisfaction ?? 60) + 10, 0, 100),
+            xiaoerFavor: clamp((st.xiaoerFavor ?? 0) + 5, 0, 100),
+            eventLog: [...st.eventLog, `azhao-raise:${s.day}`],
+          })
+        );
         return true;
       },
 

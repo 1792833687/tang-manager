@@ -10,6 +10,7 @@ import { useEffect, useState } from 'react';
 import { getDifficultyParams } from '@/config/tang-difficulty';
 import { AGE_LABELS, AZHAO_PLAYING_LINE, reputationTitle } from '@/config/tang-narrative';
 import { shopDisplayName } from '@/config/tang-shop-types';
+import { MERCHANT_RANKS, merchantRankById } from '@/config/tang-ranks';
 import { useTangManagerStore } from '@/stores/tang-manager';
 import { loadTangAiConfig } from '@/systems/tang-api-test';
 import { BUSINESS_STRATEGY_LABEL } from '@/systems/tang-business-strategy';
@@ -138,6 +139,11 @@ export function MePanel(): React.ReactElement {
           <div className="flex flex-wrap items-center justify-between gap-2">
             <span className="text-xs" style={{ color: ANCIENT.secondary }}>声望 {state.reputation} · {title}</span>
             <StarRow score={state.score} />
+          </div>
+          {/* 商阶段位（TANG-ADD-001 模块八 · 2026-08-06 补 UI：evaluateRank 每日评定但此前无展示） */}
+          <div className="flex items-center justify-between gap-2 rounded-md px-2 py-1.5" style={{ backgroundColor: ANCIENT.background, border: `1px solid ${ANCIENT.gold}` }}>
+            <span className="text-xs font-bold tracking-[0.2em]" style={{ color: ANCIENT.gold }}>商阶 · {(merchantRankById(state.rank ?? '') ?? MERCHANT_RANKS[MERCHANT_RANKS.length - 1]!).name}</span>
+            <span className="text-right text-[11px] leading-4" style={{ color: ANCIENT.secondary }}>{(merchantRankById(state.rank ?? '') ?? MERCHANT_RANKS[MERCHANT_RANKS.length - 1]!).description}</span>
           </div>
           {/* 特殊能力紧凑卡（模块四） */}
           <div className="grid grid-cols-3 gap-2">

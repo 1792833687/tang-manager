@@ -16,6 +16,18 @@ type Tab = 'overview' | 'tavern' | 'clothier' | 'herbalist';
 const DISH_CATEGORIES: DishCategory[] = ['荤菜', '素菜', '汤品', '点心', '酒品'];
 const HERB_CATEGORIES: HerbRecipeCategory[] = ['汤剂', '丸剂', '散剂', '膏剂'];
 
+/** 店型 → 产业 kind（产业系统按所选店型隔离——选酒楼就不再出现布庄/药铺功能） */
+const SHOP_INDUSTRY: Record<'jiulou' | 'buzhuang' | 'yaopu', 'tavern' | 'clothier' | 'herbalist'> = {
+  jiulou: 'tavern',
+  buzhuang: 'clothier',
+  yaopu: 'herbalist',
+};
+const INDUSTRY_TAB_LABEL: Record<'tavern' | 'clothier' | 'herbalist', string> = {
+  tavern: '酒楼·庖厨',
+  clothier: '布庄·织造',
+  herbalist: '药铺·悬壶',
+};
+
 function Btn({ label, onClick, disabled = false, color = ANCIENT.primary }: { label: string; onClick: () => void; disabled?: boolean; color?: string }): React.ReactElement {
   return (
     <button
@@ -32,6 +44,8 @@ function Btn({ label, onClick, disabled = false, color = ANCIENT.primary }: { la
 
 export function IndustryPanel(): React.ReactElement {
   const s = useTangManagerStore();
+  const shopType = s.shopType ?? 'jiulou';
+  const industryKind = SHOP_INDUSTRY[shopType];
   const [tab, setTab] = useState<Tab>('overview');
   const [category, setCategory] = useState<DishCategory>('荤菜');
   const [herbCat, setHerbCat] = useState<HerbRecipeCategory>('汤剂');
@@ -42,7 +56,7 @@ export function IndustryPanel(): React.ReactElement {
     <AncientCard accent={ANCIENT.gold} title="经营之道 · 产业">
       {/* 子标签 */}
       <div className="mb-3 flex flex-wrap gap-2 text-xs tracking-widest">
-        {([['overview', '总览'], ['tavern', '酒楼·庖厨'], ['clothier', '布庄·织造'], ['herbalist', '药铺·悬壶']] as Array<[Tab, string]>).map(([k, label]) => (
+        {([['overview', '总览'], [industryKind, INDUSTRY_TAB_LABEL[industryKind]]] as Array<[Tab, string]>).map(([k, label]) => (
           <button
             key={k}
             type="button"
@@ -64,7 +78,7 @@ export function IndustryPanel(): React.ReactElement {
 
       {tab === 'overview' && (
         <div className="flex flex-col gap-2">
-          {overview?.industries.map((ind) => (
+          {overview?.industries.filter((ind) => ind.kind === industryKind).map((ind) => (
             <div key={ind.kind} className="rounded-xl px-3 py-2" style={{ backgroundColor: ANCIENT.background, border: `1px solid ${ANCIENT.border}` }}>
               <div className="flex items-center justify-between">
                 <span className="text-sm font-bold tracking-widest" style={{ color: ANCIENT.text }}>{ind.name}</span>

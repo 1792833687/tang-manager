@@ -239,6 +239,8 @@ import { INDUSTRY_BLESSINGS, industryLevel as industryLevelDef, industryName as 
 import type { Banquet, BanquetType, CustomOrder, CustomOrderType, DishCategory, HerbRecipe, HerbRecipeCategory, HerbResearchJob, IndustryOverview, Physician, TavernDish, TavernResearchJob, Weaver } from '@/types/tang-industry';
 import { generateNodeStory } from '@/systems/tang-node-stories';
 import { addPendingConsequence as addPendingConsequenceSystem, checkPendingConsequences as checkPendingConsequencesSystem, recordEvent as recordEventSystem } from '@/systems/tang-event-consequences';
+import { checkBehaviorTriggers } from '@/systems/tang-event-consequences';
+import { BEHAVIOR_EVENTS } from '@/config/tang-behavior-events';
 import { canTriggerEvent as canTriggerEventSystem, recordTrigger as recordTriggerSystem, createEventFatigue } from '@/systems/tang-event-fatigue';
 import { YONGLE_EVENTS } from '@/config/tang-events-yongle';
 import { EAST_MARKET_EVENTS } from '@/config/tang-events-east-market';
@@ -988,6 +990,8 @@ function npcIntelContextOf(s: TangManagerStore): Parameters<typeof performBuyInf
   | 'setAiContentToggle'
   | 'recordAiLog'
   | 'clearAiLog'
+  | 'checkBehaviorEvents'
+  | 'maybeRegionEvent'
 > {
   const b = getDifficultyParams('B');
   return {
@@ -1055,6 +1059,9 @@ function npcIntelContextOf(s: TangManagerStore): Parameters<typeof performBuyInf
     eventFatigue: createEventFatigue(),
     aiContentToggles: {},
     aiGenerationLog: [],
+    lastMindReadDay: 0,
+    noExpiryStreak: 0,
+    consecutiveFullReceptionDays: 0,
     ledger: [],
     todaySettlement: null,
     shopItems: [],
@@ -2149,6 +2156,14 @@ export const useTangManagerStore = create<TangManagerStore>()(
         get().industryTick(get().day);
         // 地图与事件深化（模块七）：每日检查到期连锁事件（弹窗展示）
         get().checkPendingConsequences();
+        // 行为/区域事件接入（模块四 4.1 / 模块三）：库房无陈损累计 + 行为触发 + 区域事件
+        {
+          const cur = get();
+          const hasExpiry = (cur.shopItems ?? []).some((it) => (it.expiry ?? -1) >= 0 && (it.expiry ?? -1) <= 2);
+          set({ noExpiryStreak: hasExpiry ? 0 : (cur.noExpiryStreak ?? 0) + 1 });
+        }
+        get().checkBehaviorEvents(get().day);
+        get().maybeRegionEvent(get().day);
         set({
           dailyStaffGreeting: pickStaffGreeting({
             employees: get().employees ?? [],
@@ -2308,6 +2323,7 @@ export const useTangManagerStore = create<TangManagerStore>()(
         const trackPatch: Partial<TangManagerStore> = {};
         if (result.usedMindRead) {
           trackPatch.todayMindReadUsed = (s.todayMindReadUsed ?? 0) + 1;
+          trackPatch.lastMindReadDay = s.day; // 行为触发「能力生疏」追踪
           if (result.backlashTriggered) {
             trackPatch.todayMindReadBackfired = (s.todayMindReadBackfired ?? 0) + 1;
           }
@@ -4708,6 +4724,12 @@ export const useTangManagerStore = create<TangManagerStore>()(
             xiaoerSatisfaction: s.xiaoerSatisfaction,
           }),
         });
+        // 行为触发追踪：连续全亲自接待天数（过度劳累判定；全接待 +1，否则归零）
+        {
+          const gAll = s.guests ?? [];
+          const allHandled = gAll.length > 0 && gAll.every((g) => g.handled);
+          set({ consecutiveFullReceptionDays: allHandled ? (s.consecutiveFullReceptionDays ?? 0) + 1 : 0 });
+        }
         get().startNewDay();
         // 阶段推进（1.1）：settleDay 后判定；seized/破产等非 playing 阶段不推进
         const after = get();
@@ -6177,6 +6199,43 @@ export const useTangManagerStore = create<TangManagerStore>()(
         });
       },
 
+      checkBehaviorEvents: (day): void => {
+        const s = get();
+        const inventoryValue = (s.shopItems ?? []).reduce((sum, it) => sum + (it.price ?? 0) * it.stock, 0);
+        const maxItemStock = (s.shopItems ?? []).reduce((m, it) => Math.max(m, it.stock), 0);
+        const cands = checkBehaviorTriggers({
+          day,
+          consecutiveFullReceptionDays: s.consecutiveFullReceptionDays ?? 0,
+          daysSinceMindRead: (s.lastMindReadDay ?? 0) > 0 ? day - (s.lastMindReadDay ?? 0) : 999,
+          usedAllFiveMovesOnce: false,
+          inventoryValue,
+          maxItemStock,
+          noExpiryStreak: s.noExpiryStreak ?? 0,
+          xiaoerFavor: s.xiaoerFavor,
+          harmonyStreak: 0,
+          conflictStreak: 0,
+        });
+        const fresh: GameEvent[] = [];
+        for (const id of cands) {
+          const ev = BEHAVIOR_EVENTS[id];
+          if (!ev) continue;
+          if (!canTriggerEventSystem(id, 'behavior', s.eventFatigue ?? createEventFatigue(), day, true)) continue;
+          fresh.push(ev);
+        }
+        if (fresh.length > 0) {
+          const fatigue = fresh.reduce((acc, ev) => recordTriggerSystem(acc, ev.id, 'behavior', day, true), s.eventFatigue ?? createEventFatigue());
+          set({ pendingEvents: [...(s.pendingEvents ?? []), ...fresh], eventFatigue: fatigue });
+        }
+      },
+
+      maybeRegionEvent: (day): void => {
+        const s = get();
+        if (Math.random() >= 0.25) return;
+        const regions: MapRegion[] = ['yongle', 'east_market', 'west_market', 'changan'];
+        const region = regions[Math.floor(Math.random() * regions.length)]!;
+        get().triggerRegionEvent(region);
+      },
+
       // ==================== AI 全量接入（v1.1 模块五） ====================
       setAiContentToggle: (type, enabled): void => {
         set((st) => ({ aiContentToggles: { ...(st.aiContentToggles ?? {}), [type]: enabled } }));
@@ -6428,6 +6487,9 @@ export const useTangManagerStore = create<TangManagerStore>()(
         eventFatigue: s.eventFatigue ?? createEventFatigue(),
         aiContentToggles: s.aiContentToggles ?? {},
         aiGenerationLog: s.aiGenerationLog ?? [],
+        lastMindReadDay: s.lastMindReadDay ?? 0,
+        noExpiryStreak: s.noExpiryStreak ?? 0,
+        consecutiveFullReceptionDays: s.consecutiveFullReceptionDays ?? 0,
       }),
       // 兼容字段兜底同步：rehydrate 后 gold←silver / debt←legacyDebt（持久化只存 silver/legacyDebt）
       onRehydrateStorage: () => (state) => {

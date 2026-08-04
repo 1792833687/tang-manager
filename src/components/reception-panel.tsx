@@ -1,8 +1,8 @@
 /**
  * 接待面板（TANG-RCP-001 模块五 重做）
  * 顶部状态条（当日进度/气氛图标/通晓人心/精力）+ 客人队列（耐心进度条、移动端横滑）+
- * 当前客人详情卡（偏好绿/灰、故事标签、第N次光顾、客等）+ 六操作（OperationBar）+
- * 拼桌并单入口 + 已处理缩略 + 留言簿入口 + 打烊结算。子组件拆自本文件与 OperationBar/GuestBookPanel。
+ * 当前客人详情卡 + v1.1 对话式接待（DialoguePanel，右上可切传统六操作 OperationBar）+
+ * 拼桌并单入口 + 已处理缩略 + 留言簿入口 + 打烊结算。
  */
 'use client';
 import { useState } from 'react';

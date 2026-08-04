@@ -11,6 +11,12 @@ import { DEFAULT_MODEL_ID, MODEL_PRESETS } from '@/config/tang-ai-models';
 import { useTangManagerStore } from '@/stores/tang-manager';
 import { ANCIENT } from '@/theme/tokens';
 import type { TangAiConfig } from '@/systems/tang-api-test';
+
+/** AI 内容类型开关标签（v1.1 模块五 5.6） */
+const AI_CONTENT_LABELS: Array<[string, string]> = [
+  ['greeting', '客人开场'], ['reply', '客人回应'], ['resolution', '结果叙事'], ['event', '事件叙事'],
+  ['reminder', '店员提醒'], ['review', '客人评价'], ['node_story', '节点故事'], ['monthly', '月度总结'],
+];
 import {
   clearTangAiConfig,
   loadTangAiConfig,
@@ -27,6 +33,9 @@ export function ApiConfigModal({
   onClose: () => void;
 }): React.ReactElement | null {
   const setAiModel = useTangManagerStore((s) => s.setAiModel);
+  const aiToggles = useTangManagerStore((s) => s.aiContentToggles ?? {});
+  const setAiContentToggle = useTangManagerStore((s) => s.setAiContentToggle);
+  const aiGenerationLog = useTangManagerStore((s) => s.aiGenerationLog ?? []);
   const [inputKey, setInputKey] = useState('');
   const [model, setModel] = useState<string>(DEFAULT_MODEL_ID);
   const [existing, setExisting] = useState<TangAiConfig | null>(null);
@@ -143,6 +152,30 @@ export function ApiConfigModal({
             {testResult.success ? '✅' : '❌'} {testResult.message}
           </p>
         )}
+
+        {/* v1.1 模块五 5.6：AI 内容类型逐类开关 + 调试成功率 */}
+        <div className="mt-4 rounded-lg px-3 py-2" style={{ backgroundColor: ANCIENT.background, border: `1px solid ${ANCIENT.border}` }}>
+          <div className="mb-1 text-xs font-bold tracking-widest" style={{ color: ANCIENT.secondary }}>AI 内容类型（可逐类开关）</div>
+          <div className="flex flex-wrap gap-1.5">
+            {AI_CONTENT_LABELS.map(([key, label]) => {
+              const on = aiToggles[key] !== false;
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => setAiContentToggle(key, !on)}
+                  className="rounded px-2 py-1 text-[11px] font-bold"
+                  style={{ backgroundColor: on ? ANCIENT.primary : 'transparent', color: on ? '#FFFFFF' : ANCIENT.secondary, border: `1px solid ${on ? ANCIENT.primary : ANCIENT.border}` }}
+                >
+                  {label}{on ? '·开' : '·关'}
+                </button>
+              );
+            })}
+          </div>
+          <div className="mt-2 text-[11px]" style={{ color: ANCIENT.border }}>
+            调试：最近 {aiGenerationLog.length} 次请求，成功率 {aiGenerationLog.length > 0 ? Math.round((aiGenerationLog.filter((e) => e.ok).length / aiGenerationLog.length) * 100) : 0}%（按来源 AI/模板）
+          </div>
+        </div>
 
         <div className="mt-4 flex flex-wrap items-center gap-2">
           <button

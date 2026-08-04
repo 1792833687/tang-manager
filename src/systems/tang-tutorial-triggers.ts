@@ -120,6 +120,10 @@ export interface TutorialTriggerSnapshot {
  */
 export function evaluateTutorialTriggers(s: TutorialTriggerSnapshot): TangTutorialId[] {
   const out: TangTutorialId[] = [];
+  // P0 修复（2026-08-05）：状态型引导仅在 playing 阶段触发——
+  // 此前 FIRST_GUEST（day===1 && currentGuestIndex===0）在身份/店型/难度阶段即满足，
+  // 开局直接弹手札引导遮罩盖住身份面板 → 玩家无法取名/选性别/选店型/选难度。
+  if (s.phase !== 'playing') return out;
   // 开局：进入 playing 即弹欢迎手札
   if (s.phase === 'playing' && !s.tutorialFlags['WELCOME']) out.push('WELCOME');
   // 首日首位客人（currentGuestIndex===0 表示尚未接待）

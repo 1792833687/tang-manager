@@ -34,7 +34,7 @@ beforeEach(() => {
 /** 构造状态型触发点快照（字段缺省按「不触发」填） */
 function snap(partial: Partial<TutorialTriggerSnapshot>): TutorialTriggerSnapshot {
   return {
-    phase: 'identity',
+    phase: 'playing', // 状态型引导在游戏内触发（2026-08-05 P0：开局身份/店型/难度阶段不得触发）
     day: 2,
     currentGuestIndex: 1,
     energy: 50,

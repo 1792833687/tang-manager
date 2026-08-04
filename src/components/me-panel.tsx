@@ -104,6 +104,12 @@ export function MePanel(): React.ReactElement {
 
   // 新手引导（TANG-TUT-002）：重置入口「重读家传手札」（确认后 resetAllTutorials）
   const [resetTutorialOpen, setResetTutorialOpen] = useState(false);
+  // P0（2026-08-05）：重新开档入口——有存档的玩家可清档重走开局（身份/店型/难度）
+  const [resetGameOpen, setResetGameOpen] = useState(false);
+  const handleResetGame = (): void => {
+    state.resetGame();
+    pushActionFeedback('已重新开档，回到开局', 'success');
+  };
   const handleResetTutorials = (): void => {
     state.resetAllTutorials();
     pushActionFeedback('家传手札已重置，重新研读', 'success');
@@ -258,6 +264,15 @@ export function MePanel(): React.ReactElement {
         >
           重读家传手札
         </button>
+        <span style={{ color: ANCIENT.border }}>·</span>
+        <button
+          type="button"
+          onClick={() => setResetGameOpen(true)}
+          className="text-[11px] tracking-widest underline-offset-2 transition-opacity hover:opacity-80 hover:underline"
+          style={{ color: ANCIENT.accent }}
+        >
+          重新开档
+        </button>
       </div>
 
       {/* 变卖分店二次确认（内容深化 TANG-CONT-B 模块一；DangerConfirm 复用） */}
@@ -279,6 +294,16 @@ export function MePanel(): React.ReactElement {
           confirmLabel="重读"
           onConfirm={handleResetTutorials}
           onClose={() => setResetTutorialOpen(false)}
+        />
+      )}
+      {/* 重新开档确认（P0；DangerConfirm 复用） */}
+      {resetGameOpen && (
+        <DangerConfirm
+          title="重新开档"
+          risk="将清除当前存档，回到开局重新选择身份/店型/难度（已解锁成就与局外成长记录保留）。是否继续？"
+          confirmLabel="放弃本局，重新开档"
+          onConfirm={handleResetGame}
+          onClose={() => setResetGameOpen(false)}
         />
       )}
     </div>

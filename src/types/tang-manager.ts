@@ -1705,6 +1705,13 @@ export interface TangGameState {
   aiContentToggles: Record<string, boolean>;
   /** AI 生成日志（调试模式展示最近请求/成功率） */
   aiGenerationLog: Array<{ type: string; ok: boolean; latencyMs: number; source: 'ai' | 'template'; day: number }>;
+  // ---- 行为触发追踪（地图与事件深化 模块四 4.1 接线） ----
+  /** 最近一次使用通晓人心的天数（0=从未；能力生疏判定） */
+  lastMindReadDay: number;
+  /** 连续无陈损天数（库房管理有方判定） */
+  noExpiryStreak: number;
+  /** 连续全亲自接待天数（过度劳累判定；settleDay 维护） */
+  consecutiveFullReceptionDays: number;
   /** 玩家身份（identity 阶段填写后写入） */
   player: PlayerIdentity | null;
   /** 店型（shop-type 阶段选择后写入） */
@@ -2266,6 +2273,10 @@ export interface TangManagerStore extends TangGameState {
   revealNodeStory: (nodeId: string, nodeName: string, season?: string) => NodeStory | null;
   /** 触发区域特色事件（入 pendingEvents；按疲劳度） */
   triggerRegionEvent: (region: MapRegion) => void;
+  /** 每日清晨按行为/库存/人际条件接入事件（模块四 4.1） */
+  checkBehaviorEvents: (day: number) => void;
+  /** 每日清晨概率触发区域特色事件（模块三/四） */
+  maybeRegionEvent: (day: number) => void;
   /** 切换某内容类型的 AI 开关（模块五 5.6） */
   setAiContentToggle: (type: string, enabled: boolean) => void;
   /** 记录一条 AI 生成日志（模块五 5.6） */

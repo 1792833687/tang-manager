@@ -18,6 +18,25 @@ import type {
 import type { UnlockGreenChannelResult } from '@/systems/tang-trade';
 import type { Faction, FactionPerk, FactionUpdateResult, NPCFavor } from '@/types/tang-factions';
 import type { JournalEntry } from '@/types/tang-journal';
+import type { DialogueMessage, GuestMood, ShopReceptionResult, StoryNarrative } from '@/types/tang-dialogue';
+import type { ReminderContext, StaffReminder } from '@/types/tang-reminders';
+import type {
+  Banquet,
+  BanquetType,
+  CustomOrder,
+  CustomOrderType,
+  HerbRecipe,
+  HerbResearchJob,
+  IndustryOverview,
+  Physician,
+  TavernDish,
+  TavernResearchJob,
+  Weaver,
+} from '@/types/tang-industry';
+import type { DishCategory, HerbRecipeCategory } from '@/types/tang-industry';
+import type { EventFatigue, EventRecord, NodeStoriesRevealed, NodeStory, PendingConsequence } from '@/types/tang-map-story';
+import type { MapRegion } from '@/types/tang-map-story';
+import type { AiContentType } from '@/systems/tang-ai-generator';
 import type { Clue, ClueCategory } from '@/types/tang-clues';
 import type { Caravan, CaravanGoods } from '@/types/tang-caravan';
 import type { Decree, AlignResult } from '@/systems/tang-politics';
@@ -1623,6 +1642,69 @@ export interface TangGameState {
   /** 双视图模式（默认 operations；dashboard=经营看板只显示面板，operations=日常经营核心循环）
    *  可选字段：旧存档/测试夹具未含该字段时按 operations 兜底（见 store buildInitialState）。 */
   viewMode?: TangViewMode;
+  /** 接待对话历史（当前客人；AI 上下文；模块六） */
+  dialogueHistory: DialogueMessage[];
+  /** 客人心情（guestId → mood；模块二） */
+  guestMood: Record<string, GuestMood>;
+  /** 事件/接待故事弹窗叙事（模块四；瞬时 UI 状态不持久化） */
+  storyNarrative: StoryNarrative | null;
+  /** 店员主动提醒（店员互动提升 模块五；当前活跃列表，最多 2 条） */
+  staffReminders: StaffReminder[];
+  /** 店员连续忽略计数（staffId → 次数；3 次触发满意度 -5） */
+  staffIgnoreCounts: Record<string, number>;
+  /** 每日清晨员工问候（模块四 4.1） */
+  dailyStaffGreeting: { staffId: string; staffName: string; content: string } | null;
+  /** 每日打烊员工报告（模块四 4.2） */
+  dailyStaffReport: { staffId: string; staffName: string; content: string; band: 'positive' | 'neutral' | 'negative' } | null;
+  // ---- 店铺特色产业系统（产业系统 模块五） ----
+  /** 酒楼：已研发菜品 */
+  tavernDishes: TavernDish[];
+  /** 酒楼：进行中的宴席 */
+  tavernBanquets: Banquet[];
+  /** 酒楼：产业等级 1-5 */
+  tavernLevel: number;
+  /** 酒楼：进行中的菜品研发 */
+  tavernResearchJobs: TavernResearchJob[];
+  /** 酒楼：累计宴席承办数（升级条件） */
+  tavernBanquetCount: number;
+  /** 酒楼：研发经验层数（失败累计，成功率 +5%/层） */
+  tavernResearchExp: number;
+  /** 布庄：合作织工 */
+  weavers: Weaver[];
+  /** 布庄：定制订单 */
+  customOrders: CustomOrder[];
+  /** 布庄：产业等级 1-5 */
+  clothierLevel: number;
+  /** 布庄：累计定制订单完成数（升级条件） */
+  customOrderCount: number;
+  /** 药铺：坐堂郎中 */
+  physicians: Physician[];
+  /** 药铺：已研发药方 */
+  herbRecipes: HerbRecipe[];
+  /** 药铺：进行中的药方研发 */
+  herbResearchJobs: HerbResearchJob[];
+  /** 药铺：产业等级 1-5 */
+  herbalistLevel: number;
+  /** 药铺：累计治愈病人数（升级条件） */
+  curedPatientCount: number;
+  /** 药铺：今日问诊病人数（郎中坐堂） */
+  todayPatients: number;
+  /** 产业升级贺词（me 面板展示；瞬时） */
+  lastIndustryBlessing: string | null;
+  // ---- 地图与事件深化（模块七） ----
+  /** 事件历史记录 */
+  eventHistory: EventRecord[];
+  /** 待触发连锁事件 */
+  pendingConsequences: PendingConsequence[];
+  /** 节点故事揭示记录 */
+  nodeStoriesRevealed: NodeStoriesRevealed;
+  /** 事件疲劳度状态 */
+  eventFatigue: EventFatigue;
+  // ---- AI 全量接入（v1.1 模块五） ----
+  /** 各内容类型 AI 开关 */
+  aiContentToggles: Record<string, boolean>;
+  /** AI 生成日志（调试模式展示最近请求/成功率） */
+  aiGenerationLog: Array<{ type: string; ok: boolean; latencyMs: number; source: 'ai' | 'template'; day: number }>;
   /** 玩家身份（identity 阶段填写后写入） */
   player: PlayerIdentity | null;
   /** 店型（shop-type 阶段选择后写入） */
@@ -2112,6 +2194,84 @@ export interface TangManagerStore extends TangGameState {
   /** 接待当前客人（未处理才处理）；返回本单结果供 UI 展示，无法处理返回 null。
    *  rng 可选：测试注入固定随机序列（TANG-TRF-002：避免 20% 预购分支在真实 Math.random 下 flaky）；缺省 Math.random。 */
   handleCurrentGuest: (method: HandleMethod, rng?: () => number) => HandleGuestResult | null;
+  /** 追加对话消息（dialogueHistory；模块六） */
+  appendDialogue: (role: "guest" | "player" | "system" | "staff", content: string) => void;
+  /** 清空当前对话历史（换客/打烊时） */
+  clearDialogue: () => void;
+  /** 记录客人心情 */
+  setGuestMood: (guestId: string, mood: GuestMood) => void;
+  /** 对话式接待完成：应用店型流程结果（模块一/二；经 buildReceptionPatch 落账） */
+  completeDialogueReception: (result: ShopReceptionResult, rng?: () => number) => void;
+  /** 弹出故事弹窗（模块四） */
+  showStoryNarrative: (narrative: StoryNarrative) => void;
+  /** 关闭故事弹窗 */
+  dismissStoryNarrative: () => void;
+  /** 生成当前阶段店员提醒（店员互动提升 模块五） */
+  generateReminders: (phase: string, context: ReminderContext) => void;
+  /** 采纳/忽略提醒（采纳→效果+满意度+2；忽略×3→满意度-5） */
+  applyReminder: (reminderId: string, accepted: boolean) => void;
+  /** 关闭单条提醒 */
+  dismissReminder: (reminderId: string) => void;
+  /** 清空全部提醒 */
+  clearReminders: () => void;
+  /** 关闭清晨问候横幅 */
+  setDailyStaffGreeting: (g: { staffId: string; staffName: string; content: string } | null) => void;
+  /** 关闭打烊报告横幅 */
+  setDailyStaffReport: (r: { staffId: string; staffName: string; content: string; band: 'positive' | 'neutral' | 'negative' } | null) => void;
+  // ---- 店铺特色产业系统 actions（产业系统 模块五） ----
+  /** 酒楼：开始新菜研发（指派厨师可提高成功率） */
+  tavernStartResearch: (category: DishCategory, chefId?: string) => { ok: boolean; reason?: string; job?: TavernResearchJob };
+  /** 酒楼：结算一条研发（到期待调用；大成功/成功/失败） */
+  tavernSettleResearch: (jobId: string) => void;
+  /** 酒楼：设为/取消招牌菜（上限内） */
+  tavernSetSignature: (dishId: string) => void;
+  /** 酒楼：接宴席订单 */
+  tavernAcceptBanquet: (type?: BanquetType) => void;
+  /** 酒楼：筹备宴席（选菜+酒水+布置） */
+  tavernPrepareBanquet: (banquetId: string, dishIds: string[], wineAmount: number, decor: Banquet['decor']) => void;
+  /** 酒楼：举办宴席结算 */
+  tavernHoldBanquet: (banquetId: string) => void;
+  /** 布庄：寻访并聘请织工（上限内） */
+  clothierHireWeaver: () => { ok: boolean; reason?: string; weaver?: Weaver };
+  /** 布庄：售出织工寄卖商品（分账） */
+  clothierSellConsignment: (weaverId: string, goodsId: string) => void;
+  /** 布庄：接定制订单 */
+  clothierAcceptCustomOrder: (type?: CustomOrderType, guestName?: string, fabric?: string, style?: string) => void;
+  /** 布庄：交货判定（match 0-1） */
+  clothierDeliverCustomOrder: (orderId: string, match: number) => void;
+  /** 药铺：寻访并聘请坐堂郎中（上限内） */
+  herbalistHirePhysician: () => { ok: boolean; reason?: string; physician?: Physician };
+  /** 药铺：郎中坐堂一日（自动问诊 + 开方） */
+  herbalistPhysicianDaily: () => void;
+  /** 药铺：开始药方研发 */
+  herbalistStartResearch: (category: HerbRecipeCategory, symptom: string) => { ok: boolean; reason?: string; job?: HerbResearchJob };
+  /** 药铺：结算一条药方研发 */
+  herbalistSettleResearch: (jobId: string) => void;
+  /** 药铺：设为独家秘方（品质 ≥4） */
+  herbalistSetPatent: (recipeId: string) => void;
+  /** 产业每日结算（清晨调用：研发到期/宴席举办/郎中问诊/织工补货） */
+  industryTick: (day: number) => void;
+  /** 产业升级（按条件） */
+  industryUpgrade: (kind: 'tavern' | 'clothier' | 'herbalist') => void;
+  /** 产业总览（me 面板经营之道） */
+  industryOverview: () => IndustryOverview | null;
+  // ---- 地图与事件深化 actions（模块七） ----
+  /** 记录事件选择（eventHistory） */
+  recordEvent: (eventId: string, choiceId: string, narrative: string) => void;
+  /** 按事件选择登记连锁（pendingConsequences） */
+  addPendingConsequence: (sourceEventId: string, choiceId: string) => void;
+  /** 每日检查到期连锁并触发（startNewDay 调用；弹窗展示） */
+  checkPendingConsequences: () => void;
+  /** 揭示节点故事（首次必触发/重复 30%/特殊时机） */
+  revealNodeStory: (nodeId: string, nodeName: string, season?: string) => NodeStory | null;
+  /** 触发区域特色事件（入 pendingEvents；按疲劳度） */
+  triggerRegionEvent: (region: MapRegion) => void;
+  /** 切换某内容类型的 AI 开关（模块五 5.6） */
+  setAiContentToggle: (type: string, enabled: boolean) => void;
+  /** 记录一条 AI 生成日志（模块五 5.6） */
+  recordAiLog: (entry: { type: string; ok: boolean; latencyMs: number; source: 'ai' | 'template' }) => void;
+  /** 清空 AI 日志 */
+  clearAiLog: () => void;
   /** 结算当日（不推天数）：应用全部变更后自动 startNewDay；返回结算结果供 UI 展示 */
   settleDay: () => DaySettlement | null;
   /** 追加账本条目（上限 50） */

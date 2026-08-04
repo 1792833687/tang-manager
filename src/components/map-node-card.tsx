@@ -6,6 +6,11 @@
  */
 'use client';
 import type { MapEvent, MapNode } from '@/types/tang-map';
+import { useState } from 'react';
+import { useTangManagerStore } from '@/stores/tang-manager';
+import { seasonForDay } from '@/systems/tang-node-prosperity';
+import { generateResidents, chatWithResident } from '@/systems/tang-node-residents';
+import { generateAiNodeStory } from '@/systems/tang-ai-generator';
 import { ANCIENT } from '@/theme/tokens';
 
 const TYPE_TAG: Record<MapNode['type'], { label: string; color: string }> = {
@@ -35,6 +40,26 @@ interface MapNodeCardProps {
 
 export function MapNodeCard({ node, day, activeEvents, onAction }: MapNodeCardProps): React.ReactElement {
   const tag = TYPE_TAG[node.type];
+  const revealNodeStory = useTangManagerStore((s) => s.revealNodeStory);
+  const [story, setStory] = useState<string | null>(null);
+  const [chat, setChat] = useState<string | null>(null);
+  const season = seasonForDay(day);
+  const handleStory = (): void => {
+    const res = revealNodeStory(node.id, node.name, season);
+    const tpl = res ? res.content : '这一带的故事，你已听过了。';
+    setStory(tpl);
+    // v1.1 模块五 5.1：AI 优先生成节点故事，模板兜底（best-effort 不阻塞）
+    generateAiNodeStory(node.name, season, tpl)
+      .then((r) => {
+        if (r.source === 'ai' && r.text) setStory(r.text);
+      })
+      .catch(() => undefined);
+  };
+  const handleChat = (): void => {
+    const residents = generateResidents(node.id, day % 100);
+    const { resident, triggered } = chatWithResident(residents);
+    setChat(triggered ? resident.line + (resident.effect ? '（' + resident.effect.note + '）' : '') : '（无人搭话，你笑了笑便作罢。）');
+  };
   const events = activeEvents.filter((e) => e.nodeId === node.id);
   return (
     <div
@@ -63,6 +88,20 @@ export function MapNodeCard({ node, day, activeEvents, onAction }: MapNodeCardPr
             </div>
           ))}
         </div>
+      )}
+      {/* 地图与事件深化（模块一 1.1/1.2）：节点轶闻 + 居民攀谈 */}
+      <div className="mt-2 flex gap-2">
+        <button type="button" onClick={handleStory} className="rounded px-2 py-1 text-xs font-bold" style={{ backgroundColor: ANCIENT.background, color: ANCIENT.text, border: `1px solid ${ANCIENT.gold}` }}>
+          听一段轶闻
+        </button>
+        <button type="button" onClick={handleChat} className="rounded px-2 py-1 text-xs font-bold" style={{ backgroundColor: ANCIENT.background, color: ANCIENT.text, border: `1px solid ${ANCIENT.secondary}` }}>
+          与居民攀谈
+        </button>
+      </div>
+      {(story || chat) && (
+        <p className="mt-2 rounded px-2 py-1.5 text-xs leading-5" style={{ backgroundColor: ANCIENT.background, color: ANCIENT.secondary, border: `1px solid ${ANCIENT.border}` }}>
+          {story ?? chat}
+        </p>
       )}
       <button
         type="button"

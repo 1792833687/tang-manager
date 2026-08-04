@@ -23,6 +23,7 @@ import { CreditPanel } from './credit-panel';
 import { BusinessStrategySelector } from './business-strategy-selector';
 import { DangerConfirm } from './danger-confirm';
 import { pushActionFeedback } from './action-feedback';
+import { IndustryPanel } from './tang-manager/industry-panel';
 
 /** 分店序名（天干；shopCount-1 家分店依次命名） */
 const BRANCH_LABELS = ['甲', '乙', '丙', '丁', '戊', '己', '庚', '辛', '壬', '癸'] as const;
@@ -123,6 +124,7 @@ export function MePanel(): React.ReactElement {
 
   return (
     <div className="grid gap-3 lg:grid-cols-3">
+      <IndustryPanel />
       <AncientCard className="lg:col-span-2" title="我">
         <div className="flex flex-col gap-3">
           <div className="flex flex-wrap items-baseline justify-between gap-2">

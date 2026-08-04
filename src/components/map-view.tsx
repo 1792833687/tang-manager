@@ -483,8 +483,8 @@ export function MapView({
               }}
               style={{ cursor: 'pointer' }}
             >
-              {/* 事件标记（朱砂晕圈） */}
-              {hasEvent && <circle r={5.5} fill={ANCIENT.accent} fillOpacity={0.18} />}
+              {/* 事件标记（地图与事件深化 模块六 6.1：脉冲光晕——金色=商机 / 红色=威胁） */}
+              {hasEvent && <circle r={6.2} fill="none" stroke={activeThreatIds.has(n.id) ? ANCIENT.accent : ANCIENT.gold} strokeWidth={1} style={{ animation: 'gambling-pulse 1.2s ease-in-out infinite' }} />}
               {/* 赌瘾 debuff：西市赌坊图标 pulse 闪烁（内容深化 TANG-CONT-D 模块四） */}
               {gamblingAddictionDays > 0 && n.id === 'west_gambling_den' && (
                 <circle r={6} fill="none" stroke={ANCIENT.accent} strokeWidth={0.8} style={{ animation: 'gambling-pulse 1.2s ease-in-out infinite' }} />

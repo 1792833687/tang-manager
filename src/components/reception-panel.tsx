@@ -17,7 +17,7 @@ import { AncientCard } from './ancient-card';
 import { ComplaintCard } from './complaint-card';
 import { GuestBookPanel } from './guest-book-panel';
 import { ModalContainer } from './modal-container';
-import { OperationBar } from './operation-bar';
+import { DialoguePanel } from './tang-manager/dialogue-panel';
 import { PreorderPanel } from './preorder-panel';
 import { StrategySelector } from './strategy-selector';
 import { triggerTutorial } from '@/systems/tang-tutorial-triggers';
@@ -227,7 +227,7 @@ function ReceptionFlow({ state }: { state: ReturnType<typeof useTangManagerStore
           </div>
           <p className="mt-2 text-sm leading-relaxed" style={{ color: ANCIENT.text }}>{current.description}</p>
           <div className="mt-3">
-            <OperationBar guest={current} />
+            <DialoguePanel guest={current} />
           </div>
           {partner && (
             <button

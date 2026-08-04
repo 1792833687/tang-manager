@@ -7,6 +7,7 @@
 'use client';
 import { useState } from 'react';
 import { getShopType, shopDisplayName } from '@/config/tang-shop-types';
+import { buildStoryNarrativeFallback } from '@/config/tang-story-templates';
 import { useTangManagerStore } from '@/stores/tang-manager';
 import { ANCIENT } from '@/theme/tokens';
 import type { GameEventEffect, NarrationContext } from '@/types/tang-manager';
@@ -42,6 +43,7 @@ export function EventPanel(): React.ReactElement | null {
   const pendingEvents = useTangManagerStore((s) => s.pendingEvents);
   const player = useTangManagerStore((s) => s.player);
   const resolveEventChoice = useTangManagerStore((s) => s.resolveEventChoice);
+  const showStoryNarrative = useTangManagerStore((s) => s.showStoryNarrative);
   const [resolved, setResolved] = useState<{ title: string; consequence: string; context: NarrationContext } | null>(null);
   const [narrationVisible, setNarrationVisible] = useState(true);
 
@@ -85,6 +87,8 @@ export function EventPanel(): React.ReactElement | null {
       return;
     }
     resolveEventChoice(event.id, choiceId);
+    // 模块四 4.2：事件决策后弹出故事弹窗（叙事 + 数值变动；AI 不可用 → 模板兜底）
+    showStoryNarrative(buildStoryNarrativeFallback(event.title, event.description, event.type, [choice.consequence]));
     // 构建叙事上下文（resolveEventChoice 已同步应用变更；AI 只读，不回写）
     const s = useTangManagerStore.getState();
     const shopType = s.shopType ?? 'jiulou';

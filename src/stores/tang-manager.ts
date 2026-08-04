@@ -226,6 +226,25 @@ import type {
   WithdrawResult,
 } from '@/types/tang-manager';
 import type { FactionPerk, FactionUpdateResult } from '@/types/tang-factions';
+import { generateStaffReminders, applyReminderEffect } from '@/systems/tang-staff-reminders';
+import { pickStaffGreeting, pickStaffReport } from '@/systems/tang-staff-daily';
+import type { ReminderContext, StaffReminder } from '@/types/tang-reminders';
+import { startTavernResearch as startTavernResearchSystem, settleTavernResearch as settleTavernResearchSystem, canSetSignature, signaturePrice, tavernLevelPriceBonus, checkTavernLevelUp, applyResearchExperience } from '@/systems/tang-tavern-recipes';
+import { generateBanquetOrder as generateBanquetOrderSystem, prepareBanquet as prepareBanquetSystem, settleBanquet as settleBanquetSystem } from '@/systems/tang-tavern-banquets';
+import { generateWeaver as generateWeaverSystem, sellConsignment as sellConsignmentSystem, consignmentGoods as consignmentGoodsSystem, maxWeavers as maxWeaversSystem } from '@/systems/tang-clothier-cooperative';
+import { generateCustomOrder as generateCustomOrderSystem, deliverCustomOrder as deliverCustomOrderSystem, officialUnlocked as officialUnlockedSystem } from '@/systems/tang-clothier-custom-orders';
+import { generatePhysician as generatePhysicianSystem, physicianDailyPatients as physicianDailyPatientsSystem, physicianPrescription as physicianPrescriptionSystem, stockMatchesPrescription as stockMatchesPrescriptionSystem, maxPhysicians as maxPhysiciansSystem } from '@/systems/tang-herbalist-physician';
+import { startHerbResearch as startHerbResearchSystem, settleHerbResearch as settleHerbResearchSystem, setPatent as setPatentSystem } from '@/systems/tang-herbalist-recipes';
+import { INDUSTRY_BLESSINGS, industryLevel as industryLevelDef, industryName as industryNameDef } from '@/config/tang-industry-content';
+import type { Banquet, BanquetType, CustomOrder, CustomOrderType, DishCategory, HerbRecipe, HerbRecipeCategory, HerbResearchJob, IndustryOverview, Physician, TavernDish, TavernResearchJob, Weaver } from '@/types/tang-industry';
+import { generateNodeStory } from '@/systems/tang-node-stories';
+import { addPendingConsequence as addPendingConsequenceSystem, checkPendingConsequences as checkPendingConsequencesSystem, recordEvent as recordEventSystem } from '@/systems/tang-event-consequences';
+import { canTriggerEvent as canTriggerEventSystem, recordTrigger as recordTriggerSystem, createEventFatigue } from '@/systems/tang-event-fatigue';
+import { YONGLE_EVENTS } from '@/config/tang-events-yongle';
+import { EAST_MARKET_EVENTS } from '@/config/tang-events-east-market';
+import { WEST_MARKET_EVENTS } from '@/config/tang-events-west-market';
+import { CHANGAN_EVENTS } from '@/config/tang-events-changan';
+import type { EventFatigue, NodeStory, PendingConsequence, MapRegion } from '@/types/tang-map-story';
 // ---- Step 5b-5：叙事与后期系统（手札录 / 蛛丝马迹 / 巍明楼 / 镖队 / 多结局）----
 import {
   recordEvent as recordEventJournal,
@@ -480,6 +499,30 @@ interface ReceptionInput {
  * 构建六操作接待的完整状态补丁（顺序：详情→操作→偏好匹配→气氛→传染→留言簿→耐心→结果）。
  * 返回 Partial<TangManagerStore> 由 store action 应用。
  */
+
+/** 店员提醒上下文构建（店员互动提升 模块五；store → ReminderContext） */
+function buildReminderContext(s: TangManagerStore, phase: string): ReminderContext {
+  return {
+    day: s.day,
+    phase,
+    shopType: s.shopType,
+    employees: (s.employees ?? []).map((e) => ({ id: e.id, name: e.name, type: e.type, satisfaction: e.satisfaction })),
+    xiaoerSatisfaction: s.xiaoerSatisfaction,
+    guests: (s.guests ?? []).map((g) => ({ id: g.id, name: g.name, type: g.type, visitCount: g.visitCount, isBadReviewer: g.isBadReviewer, preferenceRevealed: g.preferenceRevealed, patience: g.patience })),
+    shopItems: (s.shopItems ?? []).map((i) => ({ name: i.name, stock: i.stock, price: i.price, cost: i.cost, expiry: i.expiry, category: i.category })),
+    todayHexagram: s.todayHexagram?.id ?? null,
+    todayNetProfit: s.todayNetProfit,
+    todayComplaint: (s.todayComplaints ?? 0) > 0,
+    todayMindReadUsed: s.todayMindReadUsed,
+    silver: s.silver,
+    loans: s.loans,
+    credit: s.credit,
+    investments: s.investments,
+    deposits: s.deposits,
+    idleSilver: s.silver >= 500 && (s.investments ?? []).length === 0,
+  };
+}
+
 function buildReceptionPatch(
   s: TangManagerStore,
   input: ReceptionInput,
@@ -907,6 +950,44 @@ function npcIntelContextOf(s: TangManagerStore): Parameters<typeof performBuyInf
   | 'resetAllTutorials'
   | 'showTutorial'
   | 'dismissTutorial'
+  | 'appendDialogue'
+  | 'clearDialogue'
+  | 'setGuestMood'
+  | 'completeDialogueReception'
+  | 'showStoryNarrative'
+  | 'dismissStoryNarrative'
+  | 'generateReminders'
+  | 'applyReminder'
+  | 'dismissReminder'
+  | 'clearReminders'
+  | 'setDailyStaffGreeting'
+  | 'setDailyStaffReport'
+  | 'tavernStartResearch'
+  | 'tavernSettleResearch'
+  | 'tavernSetSignature'
+  | 'tavernAcceptBanquet'
+  | 'tavernPrepareBanquet'
+  | 'tavernHoldBanquet'
+  | 'clothierHireWeaver'
+  | 'clothierSellConsignment'
+  | 'clothierAcceptCustomOrder'
+  | 'clothierDeliverCustomOrder'
+  | 'herbalistHirePhysician'
+  | 'herbalistPhysicianDaily'
+  | 'herbalistStartResearch'
+  | 'herbalistSettleResearch'
+  | 'herbalistSetPatent'
+  | 'industryTick'
+  | 'industryUpgrade'
+  | 'industryOverview'
+  | 'recordEvent'
+  | 'addPendingConsequence'
+  | 'checkPendingConsequences'
+  | 'revealNodeStory'
+  | 'triggerRegionEvent'
+  | 'setAiContentToggle'
+  | 'recordAiLog'
+  | 'clearAiLog'
 > {
   const b = getDifficultyParams('B');
   return {
@@ -944,6 +1025,36 @@ function npcIntelContextOf(s: TangManagerStore): Parameters<typeof performBuyInf
     luckRemaining: b.luckChances,
     guests: [],
     currentGuestIndex: 0,
+    dialogueHistory: [],
+    guestMood: {},
+    storyNarrative: null,
+    staffReminders: [],
+    staffIgnoreCounts: {},
+    dailyStaffGreeting: null,
+    dailyStaffReport: null,
+    tavernDishes: [],
+    tavernBanquets: [],
+    tavernLevel: 1,
+    tavernResearchJobs: [],
+    tavernBanquetCount: 0,
+    tavernResearchExp: 0,
+    weavers: [],
+    customOrders: [],
+    clothierLevel: 1,
+    customOrderCount: 0,
+    physicians: [],
+    herbRecipes: [],
+    herbResearchJobs: [],
+    herbalistLevel: 1,
+    curedPatientCount: 0,
+    todayPatients: 0,
+    lastIndustryBlessing: null,
+    eventHistory: [],
+    pendingConsequences: [],
+    nodeStoriesRevealed: {},
+    eventFatigue: createEventFatigue(),
+    aiContentToggles: {},
+    aiGenerationLog: [],
     ledger: [],
     todaySettlement: null,
     shopItems: [],
@@ -2032,6 +2143,19 @@ export const useTangManagerStore = create<TangManagerStore>()(
         get().checkOverdueOrders();
         // v1.0 功能解锁（TANG-POLISH-001 模块二）：每日清晨检查一次
         get().checkFeatureUnlock();
+        // 店员互动提升（模块四/五）：每日清晨随机员工问候 + 清晨阶段提醒
+        get().generateReminders('morning', buildReminderContext(get(), 'morning'));
+        // 店铺特色产业系统（模块五）：产业每日结算（研发到期/宴席举办/郎中问诊/织工补货）
+        get().industryTick(get().day);
+        // 地图与事件深化（模块七）：每日检查到期连锁事件（弹窗展示）
+        get().checkPendingConsequences();
+        set({
+          dailyStaffGreeting: pickStaffGreeting({
+            employees: get().employees ?? [],
+            xiaoerSatisfaction: get().xiaoerSatisfaction,
+            hexagram: get().todayHexagram?.id ?? null,
+          }),
+        });
       },
 
       /** 接待当前客人（未处理才处理）；返回本单结果供 UI 展示，无法处理返回 null。
@@ -4576,6 +4700,14 @@ export const useTangManagerStore = create<TangManagerStore>()(
           get().enterBankruptcy();
           return result.settlement;
         }
+        // 店员互动提升（模块四/五）：打烊随机员工报告 + 打烊阶段提醒（startNewDay 前，取当日净收益）
+        get().generateReminders('closing', { ...buildReminderContext(s, 'closing'), todayNetProfit: netIncome });
+        set({
+          dailyStaffReport: pickStaffReport({
+            employees: s.employees ?? [],
+            xiaoerSatisfaction: s.xiaoerSatisfaction,
+          }),
+        });
         get().startNewDay();
         // 阶段推进（1.1）：settleDay 后判定；seized/破产等非 playing 阶段不推进
         const after = get();
@@ -4940,6 +5072,10 @@ export const useTangManagerStore = create<TangManagerStore>()(
         next.pendingEvents = s.pendingEvents.filter((e) => e.id !== eventId);
         next.eventLog = s.eventLog.includes(eventId) ? s.eventLog : [...s.eventLog, eventId];
         next.events = s.events.map((e) => (e.id === eventId ? { ...e, triggered: true } : e));
+        // 地图与事件深化（模块七）：记录事件选择 + 登记连锁 + 疲劳度
+        next.eventHistory = recordEventSystem(s.eventHistory ?? [], eventId, choiceId, s.day, choice.consequence);
+        next.pendingConsequences = addPendingConsequenceSystem(s.pendingConsequences ?? [], eventId, choiceId, s.day);
+        next.eventFatigue = recordTriggerSystem(s.eventFatigue ?? createEventFatigue(), eventId, 'random', s.day, false);
         set(next);
         // Step 5b-5：手札录接线——事件/抉择自动记录（type='choice'：标题=事件名，正文=所选选项与后果）
         const journalEntry = recordChoiceJournal(journalContext(s), {
@@ -5612,10 +5748,452 @@ export const useTangManagerStore = create<TangManagerStore>()(
       dismissTutorial: (): void => {
         set({ currentTutorial: null });
       },
+
+      /** 追加对话消息（dialogueHistory；模块六） */
+      appendDialogue: (role, content): void => {
+        const s = get();
+        set({ dialogueHistory: [...(s.dialogueHistory ?? []), { role, content, source: 'template' }] });
+      },
+
+      /** 清空当前对话历史（换客/打烊时） */
+      clearDialogue: (): void => {
+        set({ dialogueHistory: [] });
+      },
+
+      /** 记录客人心情 */
+      setGuestMood: (guestId, mood): void => {
+        set({ guestMood: { ...(get().guestMood ?? {}), [guestId]: mood } });
+      },
+
+      /** 对话式接待完成：应用店型流程结果（模块一/二；经 buildReceptionPatch 落账 + 故事弹窗） */
+      completeDialogueReception: (result, rng = Math.random): void => {
+        const s = get();
+        if (s.phase !== 'playing') return;
+        const guest = result.guestId ? s.guests.find((g) => g.id === result.guestId) : s.guests[s.currentGuestIndex];
+        if (!guest || guest.handled) return;
+        const patch = buildReceptionPatch(s, {
+          guestId: guest.id,
+          income: result.income,
+          energyConsumed: result.energyConsumed,
+          review: result.review,
+          reputationChange: result.praised ? 1 : 0,
+          scoreChange: 0,
+          satisfactionDelta: result.satisfactionDelta,
+          favorDelta: result.favorDelta,
+          praiseTriggered: !!result.praised,
+          complaintTriggered: !!result.complaintTriggered,
+          handledNote: result.handledNote,
+        }, rng);
+        set({
+          ...patch,
+          storyNarrative: {
+            title: result.ok ? (result.shop === 'jiulou' ? '宴席宾主尽欢' : result.shop === 'buzhuang' ? '量身定衣' : '对症开方') : '这单没成',
+            body: result.narrative,
+            npcLine: result.guestLine,
+            numbers: result.summary,
+            source: 'template',
+          },
+        });
+        if (guest.type === 'big_order') {
+          set({ weeklyTaskProgress: addWeeklyProgressSystem(get().weeklyTaskProgress, 'week-big-orders', 1) });
+        }
+      },
+
+      /** 弹出故事弹窗（模块四） */
+      showStoryNarrative: (narrative): void => {
+        set({ storyNarrative: narrative });
+      },
+
+      /** 关闭故事弹窗 */
+      dismissStoryNarrative: (): void => {
+        set({ storyNarrative: null });
+      },
+
+      /** 生成当前阶段店员提醒（店员互动提升 模块五） */
+      generateReminders: (phase, context): void => {
+        set({ staffReminders: generateStaffReminders(context, phase) });
+      },
+
+      /** 采纳/忽略提醒（采纳→效果+满意度+2；忽略×3→满意度-5） */
+      applyReminder: (reminderId, accepted): void => {
+        const s = get();
+        const res = applyReminderEffect(s.staffReminders ?? [], reminderId, accepted, s.staffIgnoreCounts ?? {});
+        const patch: Partial<TangManagerStore> = {
+          staffReminders: res.reminders,
+          staffIgnoreCounts: res.ignoreCounts,
+        };
+        const aZhaoDelta = res.satisfactionDeltas['a_zhao'];
+        if (aZhaoDelta) patch.xiaoerSatisfaction = clamp(s.xiaoerSatisfaction + aZhaoDelta, 0, 100);
+        const empDeltas = Object.entries(res.satisfactionDeltas).filter(([k]) => k !== 'a_zhao');
+        if (empDeltas.length > 0) {
+          patch.employees = (s.employees ?? []).map((e) => {
+            const d = res.satisfactionDeltas[e.id];
+            return d ? { ...e, satisfaction: clamp(e.satisfaction + d, 0, 100) } : e;
+          });
+        }
+        set(patch);
+        // 采纳效果落账（轻量：阿昭满意度/好感直接应用；其余记录 eventLog 提示，供后续系统接线）
+        if (accepted && res.acceptedEffect) {
+          const eff = res.acceptedEffect;
+          if (eff.type === 'a_zhao_satisfaction') set((st) => ({ xiaoerSatisfaction: clamp(st.xiaoerSatisfaction + (eff.value ?? 1), 0, 100) }));
+          if (eff.type === 'a_zhao_favor') set((st) => ({ xiaoerFavor: clamp(st.xiaoerFavor + (eff.value ?? 1), 0, 100) }));
+          set((st) => ({ eventLog: [...st.eventLog, '[第' + st.day + '日] 采纳' + (res.acceptedEffect?.note ?? '店员建议')] }));
+        }
+      },
+
+      /** 关闭单条提醒 */
+      dismissReminder: (reminderId): void => {
+        set((s) => ({ staffReminders: (s.staffReminders ?? []).filter((r) => r.id !== reminderId) }));
+      },
+
+      /** 清空全部提醒 */
+      clearReminders: (): void => {
+        set({ staffReminders: [] });
+      },
+
+      /** 关闭清晨问候横幅 */
+      setDailyStaffGreeting: (g): void => {
+        set({ dailyStaffGreeting: g });
+      },
+
+      /** 关闭打烊报告横幅 */
+      setDailyStaffReport: (r): void => {
+        set({ dailyStaffReport: r });
+      },
+
+      // ==================== 店铺特色产业系统（模块五） ====================
+      tavernStartResearch: (category, chefId): { ok: boolean; reason?: string; job?: TavernResearchJob } => {
+        const s = get();
+        if (s.silver < 15) return { ok: false, reason: '银两不足' };
+        const chef = chefId ? (s.employees ?? []).find((e) => e.id === chefId) : undefined;
+        const chefSkill = chef?.type === 'chef' ? 3 + Math.floor((chef.satisfaction ?? 50) / 20) : 1;
+        const job = startTavernResearchSystem(category, chefSkill, 2);
+        set({
+          silver: s.silver - job.cost,
+          gold: s.silver - job.cost,
+          tavernResearchJobs: [...(s.tavernResearchJobs ?? []), job],
+        });
+        return { ok: true, job };
+      },
+
+      tavernSettleResearch: (jobId): void => {
+        const s = get();
+        const job = (s.tavernResearchJobs ?? []).find((j) => j.id === jobId);
+        if (!job) return;
+        const res = settleTavernResearchSystem({ ...job, successRate: applyResearchExperience(job.successRate, s.tavernResearchExp ?? 0) });
+        const jobs = (s.tavernResearchJobs ?? []).filter((j) => j.id !== jobId);
+        if (res.dish) {
+          set({
+            tavernResearchJobs: jobs,
+            tavernDishes: [...(s.tavernDishes ?? []), res.dish],
+            eventLog: [...s.eventLog, '[第' + s.day + '日] 研发成功「' + res.dish.name + '」' + (res.grand ? '（大成功·招牌菜）' : '')],
+          });
+        } else if (res.experience) {
+          set({
+            tavernResearchJobs: jobs,
+            tavernResearchExp: (s.tavernResearchExp ?? 0) + 1,
+            eventLog: [...s.eventLog, '[第' + s.day + '日] 研发失败，积累研发经验（下次成功率 +5%）'],
+          });
+        }
+      },
+
+      tavernSetSignature: (dishId): void => {
+        const s = get();
+        const dishes = s.tavernDishes ?? [];
+        const dish = dishes.find((d) => d.id === dishId);
+        if (!dish) return;
+        const next = dishes.map((d) => {
+          if (d.id !== dishId) return d;
+          if (d.isSignature) return { ...d, isSignature: false, price: Math.round(d.price / (1 + 0.3)) };
+          if (!canSetSignature(dishes, s.tavernLevel)) return d;
+          return { ...d, isSignature: true, price: signaturePrice(d.price) };
+        });
+        set({ tavernDishes: next });
+      },
+
+      tavernAcceptBanquet: (type): void => {
+        const s = get();
+        const order = generateBanquetOrderSystem(type, s.day, s.tavernLevel);
+        set({ tavernBanquets: [...(s.tavernBanquets ?? []), order] });
+      },
+
+      tavernPrepareBanquet: (banquetId, dishIds, wineAmount, decor): void => {
+        const s = get();
+        const order = (s.tavernBanquets ?? []).find((b) => b.id === banquetId);
+        if (!order || order.status !== 'preparing') return;
+        const required = order.type === 'shou_yan' || order.type === 'shang_hui' ? 7 : 6;
+        set({ tavernBanquets: (s.tavernBanquets ?? []).map((b) => (b.id === banquetId ? prepareBanquetSystem(b, dishIds, wineAmount, decor, required) : b)) });
+      },
+
+      tavernHoldBanquet: (banquetId): void => {
+        const s = get();
+        const order = (s.tavernBanquets ?? []).find((b) => b.id === banquetId);
+        if (!order || order.status !== 'preparing') return;
+        const { result } = settleBanquetSystem(order, order.dishIds.length, s.tavernLevel);
+        set({
+          tavernBanquets: (s.tavernBanquets ?? []).map((b) => (b.id === banquetId ? { ...b, status: 'held', result } : b)),
+          tavernBanquetCount: (s.tavernBanquetCount ?? 0) + 1,
+          reputation: clamp(s.reputation + result.reputationGain, 0, 1000),
+          silver: s.silver + result.netProfit,
+          gold: s.silver + result.netProfit,
+          eventLog: [...s.eventLog, '[第' + s.day + '日] 宴席「' + (order.type === 'shou_yan' ? '寿宴' : order.type === 'hun_yan' ? '婚宴' : order.type === 'shang_hui' ? '商会宴' : '宴席') + '」净入 ' + result.netProfit + ' 两' + (result.referral ? '，宾客引荐新客' : '')],
+        });
+      },
+
+      clothierHireWeaver: (): { ok: boolean; reason?: string; weaver?: Weaver } => {
+        const s = get();
+        const weavers = s.weavers ?? [];
+        if (weavers.filter((w) => w.status === 'active').length >= maxWeaversSystem(s.clothierLevel)) {
+          return { ok: false, reason: '合作织工已满' };
+        }
+        const weaver = generateWeaverSystem();
+        set({ weavers: [...weavers, weaver] });
+        return { ok: true, weaver };
+      },
+
+      clothierSellConsignment: (weaverId, goodsId): void => {
+        const s = get();
+        const weaver = (s.weavers ?? []).find((w) => w.id === weaverId);
+        if (!weaver) return;
+        const res = sellConsignmentSystem(weaver, goodsId, s.day);
+        if (res.shopIncome > 0) {
+          set({
+            weavers: (s.weavers ?? []).map((w) => (w.id === weaverId ? res.weaver : w)),
+            silver: s.silver + res.shopIncome,
+            gold: s.silver + res.shopIncome,
+          });
+        }
+      },
+
+      clothierAcceptCustomOrder: (type, guestName, fabric, style): void => {
+        const s = get();
+        const order = generateCustomOrderSystem(type, guestName ?? '客官', fabric ?? '丝绸', style ?? '素雅');
+        set({ customOrders: [...(s.customOrders ?? []), order] });
+      },
+
+      clothierDeliverCustomOrder: (orderId, match): void => {
+        const s = get();
+        const order = (s.customOrders ?? []).find((o) => o.id === orderId);
+        if (!order || order.status !== 'making') return;
+        const { result } = deliverCustomOrderSystem(order, match);
+        set({
+          customOrders: (s.customOrders ?? []).map((o) => (o.id === orderId ? { ...o, status: result.grade === 'reject' ? 'rejected' : 'delivered', result } : o)),
+          customOrderCount: (s.customOrderCount ?? 0) + (result.grade === 'reject' ? 0 : 1),
+          silver: s.silver + result.income,
+          gold: s.silver + result.income,
+        });
+      },
+
+      herbalistHirePhysician: (): { ok: boolean; reason?: string; physician?: Physician } => {
+        const s = get();
+        const physicians = s.physicians ?? [];
+        if (physicians.filter((p) => p.status === 'active').length >= maxPhysiciansSystem(s.herbalistLevel)) {
+          return { ok: false, reason: '坐堂郎中名额已满' };
+        }
+        const physician = generatePhysicianSystem();
+        set({ physicians: [...physicians, physician] });
+        return { ok: true, physician };
+      },
+
+      herbalistPhysicianDaily: (): void => {
+        const s = get();
+        const physicians = (s.physicians ?? []).map((p) => {
+          if (p.status !== 'active') return p;
+          const patients = physicianDailyPatientsSystem(p, s.herbalistLevel);
+          const prescription = physicianPrescriptionSystem(p);
+          const stock: Record<string, number> = {};
+          for (const it of s.shopItems ?? []) stock[it.name] = it.stock;
+          const matched = stockMatchesPrescriptionSystem(prescription, stock);
+          const sat = clamp(p.satisfaction + (matched ? 2 : -5), 0, 100);
+          const next: Physician = { ...p, satisfaction: sat };
+          return next;
+        });
+        const active = physicians.filter((p) => p.status === 'active');
+        const patients = active.reduce((sum, p) => sum + physicianDailyPatientsSystem(p, s.herbalistLevel), 0);
+        set({
+          physicians,
+          todayPatients: patients,
+          curedPatientCount: (s.curedPatientCount ?? 0) + patients,
+        });
+      },
+
+      herbalistStartResearch: (category, symptom): { ok: boolean; reason?: string; job?: HerbResearchJob } => {
+        const s = get();
+        if (s.silver < 15) return { ok: false, reason: '银两不足' };
+        const job = startHerbResearchSystem(category, symptom, 2);
+        set({
+          silver: s.silver - job.cost,
+          gold: s.silver - job.cost,
+          herbResearchJobs: [...(s.herbResearchJobs ?? []), job],
+        });
+        return { ok: true, job };
+      },
+
+      herbalistSettleResearch: (jobId): void => {
+        const s = get();
+        const job = (s.herbResearchJobs ?? []).find((j) => j.id === jobId);
+        if (!job) return;
+        const res = settleHerbResearchSystem(job);
+        const jobs = (s.herbResearchJobs ?? []).filter((j) => j.id !== jobId);
+        if (res.recipe) {
+          set({ herbResearchJobs: jobs, herbRecipes: [...(s.herbRecipes ?? []), res.recipe], eventLog: [...s.eventLog, '[第' + s.day + '日] 药方「' + res.recipe.name + '」研发成功'] });
+        } else if (res.improved) {
+          set({ herbResearchJobs: jobs, eventLog: [...s.eventLog, '[第' + s.day + '日] 药方改良：品质 +1'] });
+        } else {
+          set({ herbResearchJobs: jobs, eventLog: [...s.eventLog, '[第' + s.day + '日] 药方研发失败，药材损耗'] });
+        }
+      },
+
+      herbalistSetPatent: (recipeId): void => {
+        const s = get();
+        const recipe = (s.herbRecipes ?? []).find((r) => r.id === recipeId);
+        if (!recipe) return;
+        const res = setPatentSystem(recipe);
+        set({ herbRecipes: (s.herbRecipes ?? []).map((r) => (r.id === recipeId ? res.recipe : r)) });
+      },
+
+      industryTick: (day): void => {
+        const s = get();
+        // 研发到期结算
+        for (const job of s.tavernResearchJobs ?? []) {
+          if (job.remainingDays - 1 <= 0) get().tavernSettleResearch(job.id);
+          else set((st) => ({ tavernResearchJobs: (st.tavernResearchJobs ?? []).map((j) => (j.id === job.id ? { ...j, remainingDays: j.remainingDays - 1 } : j)) }));
+        }
+        for (const job of s.herbResearchJobs ?? []) {
+          if (job.remainingDays - 1 <= 0) get().herbalistSettleResearch(job.id);
+          else set((st) => ({ herbResearchJobs: (st.herbResearchJobs ?? []).map((j) => (j.id === job.id ? { ...j, remainingDays: j.remainingDays - 1 } : j)) }));
+        }
+        // 宴席到期举办（筹备满 100 自动结算）
+        for (const b of s.tavernBanquets ?? []) {
+          if (b.status === 'preparing' && b.holdDay <= day && b.prepProgress >= 100) {
+            get().tavernHoldBanquet(b.id);
+          }
+        }
+        // 郎中坐堂一日
+        if ((s.physicians ?? []).some((p) => p.status === 'active')) {
+          get().herbalistPhysicianDaily();
+        }
+        // 织工补货（寄卖品全部售出或空 → 每 3-7 天一批）
+        const st2 = get();
+        set({
+          weavers: (st2.weavers ?? []).map((w) => {
+            if (w.status !== 'active') return w;
+            const allSold = w.currentGoods.length > 0 && w.currentGoods.every((g) => g.sold);
+            if (allSold || w.currentGoods.length === 0) {
+              return { ...w, currentGoods: consignmentGoodsSystem(w, 10) };
+            }
+            return w;
+          }),
+        });
+      },
+
+      industryUpgrade: (kind): void => {
+        const s = get();
+        const level = kind === 'tavern' ? s.tavernLevel : kind === 'clothier' ? s.clothierLevel : s.herbalistLevel;
+        const score = s.score;
+        const count = kind === 'tavern' ? s.tavernBanquetCount ?? 0 : kind === 'clothier' ? s.customOrderCount ?? 0 : s.curedPatientCount ?? 0;
+        const next = industryLevelDef(kind, level + 1);
+        if (next.level <= level || score < next.require.score || count < next.require.count) return;
+        const blessings = INDUSTRY_BLESSINGS[kind]!;
+        const blessing = blessings[Math.min(level, blessings.length - 1)]!;
+        const patch: Partial<TangManagerStore> = { lastIndustryBlessing: blessing };
+        if (kind === 'tavern') patch.tavernLevel = level + 1;
+        if (kind === 'clothier') patch.clothierLevel = level + 1;
+        if (kind === 'herbalist') patch.herbalistLevel = level + 1;
+        set({ ...patch, eventLog: [...s.eventLog, '[第' + s.day + '日] ' + industryNameDef(kind) + '晋升「' + next.name + '」'] });
+      },
+
+      industryOverview: (): IndustryOverview | null => {
+        const s = get();
+        if (!s.shopType) return null;
+        const build = (kind: 'tavern' | 'clothier' | 'herbalist'): IndustryOverview['industries'][number] => {
+          const level = kind === 'tavern' ? s.tavernLevel : kind === 'clothier' ? s.clothierLevel : s.herbalistLevel;
+          const count = kind === 'tavern' ? s.tavernBanquetCount ?? 0 : kind === 'clothier' ? s.customOrderCount ?? 0 : s.curedPatientCount ?? 0;
+          const def = industryLevelDef(kind, level);
+          const next = industryLevelDef(kind, level + 1);
+          const can = next.level > level && s.score >= next.require.score && count >= next.require.count;
+          return {
+            kind,
+            name: industryNameDef(kind),
+            level,
+            levelName: def.name,
+            count,
+            next: next.level > level ? next.require : null,
+            canUpgrade: can,
+            bless: INDUSTRY_BLESSINGS[kind]![Math.min(level - 1, INDUSTRY_BLESSINGS[kind]!.length - 1)]!,
+          };
+        };
+        return { shopType: s.shopType, industries: [build('tavern'), build('clothier'), build('herbalist')] };
+      },
+
+      // ==================== 地图与事件深化（模块七） ====================
+      recordEvent: (eventId, choiceId, narrative): void => {
+        const s = get();
+        set({ eventHistory: recordEventSystem(s.eventHistory ?? [], eventId, choiceId, s.day, narrative) });
+      },
+
+      addPendingConsequence: (sourceEventId, choiceId): void => {
+        const s = get();
+        set({ pendingConsequences: addPendingConsequenceSystem(s.pendingConsequences ?? [], sourceEventId, choiceId, s.day) });
+      },
+
+      checkPendingConsequences: (): void => {
+        const s = get();
+        const { due, remaining } = checkPendingConsequencesSystem(s.pendingConsequences ?? [], s.day);
+        if (due.length === 0) return;
+        let silverDelta = 0;
+        let repDelta = 0;
+        for (const d of due) {
+          silverDelta += d.effect?.gold ?? 0;
+          repDelta += d.effect?.reputation ?? 0;
+        }
+        const patch: Partial<TangManagerStore> = { pendingConsequences: remaining };
+        if (silverDelta !== 0) patch.silver = Math.max(0, s.silver + silverDelta);
+        if (repDelta !== 0) patch.reputation = clamp(s.reputation + repDelta, 0, 1000);
+        const narrative = due.map((d) => d.narrative).join(' ');
+        set({
+          ...patch,
+          storyNarrative: { title: '连锁事至', body: narrative, numbers: ['连锁事件已触发'], source: 'template' },
+        });
+      },
+
+      revealNodeStory: (nodeId, nodeName, season): NodeStory | null => {
+        const s = get();
+        const res = generateNodeStory(nodeId, nodeName, s.nodeStoriesRevealed ?? {}, season ?? '', Math.random);
+        if (!res) return null;
+        set({ nodeStoriesRevealed: res.revealed });
+        return res.story;
+      },
+
+      triggerRegionEvent: (region): void => {
+        const s = get();
+        const pool = region === 'yongle' ? YONGLE_EVENTS : region === 'east_market' ? EAST_MARKET_EVENTS : region === 'west_market' ? WEST_MARKET_EVENTS : CHANGAN_EVENTS;
+        const candidates = pool.filter((e) => canTriggerEventSystem(e.id, region, s.eventFatigue ?? createEventFatigue(), s.day, false));
+        if (candidates.length === 0) return;
+        const ev = candidates[Math.floor(Math.random() * candidates.length)]!;
+        set({
+          pendingEvents: [...(s.pendingEvents ?? []), ev],
+          eventFatigue: recordTriggerSystem(s.eventFatigue ?? createEventFatigue(), ev.id, region, s.day, false),
+        });
+      },
+
+      // ==================== AI 全量接入（v1.1 模块五） ====================
+      setAiContentToggle: (type, enabled): void => {
+        set((st) => ({ aiContentToggles: { ...(st.aiContentToggles ?? {}), [type]: enabled } }));
+      },
+
+      recordAiLog: (entry): void => {
+        const s = get();
+        set({ aiGenerationLog: [...(s.aiGenerationLog ?? []), { ...entry, day: s.day }].slice(-30) });
+      },
+
+      clearAiLog: (): void => {
+        set({ aiGenerationLog: [] });
+      },
     }),
     {
       name: PERSIST_NAME,
-      version: 16,
+      version: 20,
       storage: createJSONStorage(() => createZustandPersistStorage()),
       // v15 → v16：新手引导（TANG-TUT-001 模块一）新增 tutorialFlags/currentTutorial 字段。
       // 迁移策略「丢弃重建」（仅针对引导状态）：旧存档不含引导字段，一律重置为
@@ -5624,6 +6202,14 @@ export const useTangManagerStore = create<TangManagerStore>()(
       // v14 → v15：迷雾系统（TANG-MIST-001 模块一）新增 fogOfWar 字段（区域/势力/人物三类迷雾）。
       // 迁移策略沿用 v14「保留旧存档全部数据字段 + 按状态补齐」：base 已含 fogOfWar 初始态，
       // 旧存档缺失时取 base（L1/L2/L3 初始雾态），已有则保留。
+      // v19 → v20：AI 全量接入（v1.1 模块五）新增 aiContentToggles/aiGenerationLog 字段。
+      // 迁移策略沿用 v14「保留旧存档全部数据字段 + 按状态补齐」：base 已含新字段初始态，旧存档缺失时取 base。
+      // v18 → v19：地图与事件深化（模块七）新增 eventHistory/pendingConsequences/nodeStoriesRevealed/eventFatigue 字段。
+      // 迁移策略沿用 v14「保留旧存档全部数据字段 + 按状态补齐」：base 已含新字段初始态，旧存档缺失时取 base。
+      // v17 → v18：店铺特色产业系统（模块五）新增 tavern*/weavers/customOrders/physicians/herb*/industry 等级字段。
+      // 迁移策略沿用 v14「保留旧存档全部数据字段 + 按状态补齐」：base 已含新字段初始态，旧存档缺失时取 base。
+      // v16 → v17：店员互动提升（模块五）新增 staffReminders/staffIgnoreCounts/dailyStaffGreeting/dailyStaffReport 字段。
+      // 迁移策略沿用 v14「保留旧存档全部数据字段 + 按状态补齐」：base 已含新字段初始态，旧存档缺失时取 base。
       // v12 → v14：v1.0 功能解锁（TANG-POLISH-001 模块二）新增 unlockedFeatures 字段。
       // 迁移策略（区别于既往「丢弃重建」）：v14 起改为「按当前状态补解锁」——
       // 保留旧存档全部数据字段，仅将缺失的 unlockedFeatures 按旧存档当前状态
@@ -5778,7 +6364,7 @@ export const useTangManagerStore = create<TangManagerStore>()(
         politicalEndgame: s.politicalEndgame,
         joinedCourt: s.joinedCourt,
         // TANG-ADD-001：成瘾性玩法模块（持久化数据字段；overlay 开关/瞬时展示不持久化）
-        todayHexagram: s.todayHexagram,
+        todayHexagram: s.todayHexagram?.id ?? null,
         todayTasks: s.todayTasks,
         todayTasksCompleted: s.todayTasksCompleted,
         todayTaskMindReadBonus: s.todayTaskMindReadBonus,
@@ -5815,6 +6401,33 @@ export const useTangManagerStore = create<TangManagerStore>()(
         // 新手引导（TANG-TUT-001 模块一）：引导已读标记与当前引导（持久化；手札弹窗展示状态由 UI 层消费）
         tutorialFlags: s.tutorialFlags ?? {},
         currentTutorial: s.currentTutorial ?? null,
+        // 店员互动提升（模块五）：提醒/忽略计数/问候/报告持久化
+        staffReminders: s.staffReminders ?? [],
+        staffIgnoreCounts: s.staffIgnoreCounts ?? {},
+        dailyStaffGreeting: s.dailyStaffGreeting ?? null,
+        dailyStaffReport: s.dailyStaffReport ?? null,
+        // 店铺特色产业系统（模块五）：产业状态持久化
+        tavernDishes: s.tavernDishes ?? [],
+        tavernBanquets: s.tavernBanquets ?? [],
+        tavernLevel: s.tavernLevel ?? 1,
+        tavernResearchJobs: s.tavernResearchJobs ?? [],
+        tavernBanquetCount: s.tavernBanquetCount ?? 0,
+        tavernResearchExp: s.tavernResearchExp ?? 0,
+        weavers: s.weavers ?? [],
+        customOrders: s.customOrders ?? [],
+        clothierLevel: s.clothierLevel ?? 1,
+        customOrderCount: s.customOrderCount ?? 0,
+        physicians: s.physicians ?? [],
+        herbRecipes: s.herbRecipes ?? [],
+        herbResearchJobs: s.herbResearchJobs ?? [],
+        herbalistLevel: s.herbalistLevel ?? 1,
+        curedPatientCount: s.curedPatientCount ?? 0,
+        eventHistory: s.eventHistory ?? [],
+        pendingConsequences: s.pendingConsequences ?? [],
+        nodeStoriesRevealed: s.nodeStoriesRevealed ?? {},
+        eventFatigue: s.eventFatigue ?? createEventFatigue(),
+        aiContentToggles: s.aiContentToggles ?? {},
+        aiGenerationLog: s.aiGenerationLog ?? [],
       }),
       // 兼容字段兜底同步：rehydrate 后 gold←silver / debt←legacyDebt（持久化只存 silver/legacyDebt）
       onRehydrateStorage: () => (state) => {

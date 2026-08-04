@@ -17,6 +17,12 @@ import { modeManager } from '@/infrastructure/mode/ModeManager';
 import type { LLMConfig, OpenRouterMessage } from '@/systems/dialogue/types';
 import { loadTangAiConfig } from '@/systems/tang-api-test';
 import type { NarrationContext, NarrationType } from '@/types/tang-manager';
+import { OPENING_LINES, pickTemplate } from '@/config/tang-dialogue-templates';
+import { GUEST_TYPE_LABEL } from '@/config/tang-guest-content';
+import { shopDisplayName } from '@/config/tang-shop-types';
+import { buildGuestReply, MOOD_CONFIGS } from '@/systems/tang-dialogue-engine';
+import type { Guest, ShopType } from '@/types/tang-manager';
+import type { GuestMood } from '@/types/tang-dialogue';
 
 /** generateNarration 可选项（createClient 便于测试注入） */
 export interface NarrationOptions {
@@ -177,4 +183,98 @@ export async function generateNarration(
     console.warn('[tang-narrator] AI 叙事生成失败，降级模板：', error);
     return buildFallbackTemplate(context.type, context);
   }
+}
+
+// ============================================================
+// 模块二 2.3 / 模块五 5.1-5.2：对话生成（开场白 / 回应 / 结果叙事）
+// AI 不可用 / 离线 / 无 key / 超时（>8s）→ 预设模板兜底，绝不 throw。
+// ============================================================
+
+/** 对话 AI 流式超时（模块五 5.2：>8s 自动切换预设模板） */
+const DIALOGUE_STREAM_TIMEOUT = 8000;
+
+/** 对话 AI 公共执行（守卫 → 组装 messages → stream → 失败降级；与 generateNarration 同构） */
+async function runDialogueAi(
+  systemPrompt: string,
+  userPrompt: string,
+  fallback: string,
+  opts: NarrationOptions
+): Promise<string> {
+  const tianji = await loadTangAiConfig();
+  const tianjiReady = !!tianji?.configured && !!tianji?.apiKey;
+  const hasKey = tianjiReady || hasStoredApiKey();
+  if (shouldSkipAi(opts, modeManager.isOnline, hasKey)) {
+    return fallback;
+  }
+  const model = tianjiReady ? tianji!.model : (opts.model ?? DEFAULT_MODEL);
+  const apiKey = tianjiReady ? tianji!.apiKey : (getStoredApiKey() ?? '');
+  const messages: OpenRouterMessage[] = [
+    { role: 'system', content: systemPrompt },
+    { role: 'user', content: userPrompt },
+  ];
+  const config: LLMConfig = {
+    model,
+    temperature: DEFAULT_TEMPERATURE,
+    maxTokens: DEFAULT_MAX_TOKENS,
+    streamTimeout: DIALOGUE_STREAM_TIMEOUT,
+    enableTypingEffect: false,
+  };
+  let accumulated = '';
+  const client = opts.createClient ? opts.createClient() : new OpenRouterClient({ apiKey });
+  try {
+    await client.streamChatCompletion(config, messages, (chunk) => {
+      accumulated += chunk;
+      opts.onChunk?.(chunk);
+    });
+    const text = accumulated.trim();
+    return text.length > 0 ? text : fallback;
+  } catch (error) {
+    console.warn('[tang-narrator] 对话 AI 生成失败，降级模板：', error);
+    return fallback;
+  }
+}
+
+/** 客人开场白（2.3：每位客人到店时；AI 不可用 → OPENING_LINES 每店 10 套随机） */
+export async function generateGuestGreeting(
+  guest: Guest,
+  shopType: ShopType,
+  opts: NarrationOptions = {}
+): Promise<string> {
+  const fallback = pickTemplate(OPENING_LINES[shopType]);
+  const prompt =
+    '你是一位唐朝长安城的' + (GUEST_TYPE_LABEL[guest.type] ?? '客人') + '，到' + shopDisplayName(shopType) + '消费。' +
+    '你的性格：' + (guest.storyTag ?? '寻常路人') + '。你的需求：' + guest.description + '。' +
+    '请以你的身份说一句进店开场白，1-2句话，口语化，符合唐代市井语言风格。不要替掌柜做决定。不要编造系统没给你的数字。';
+  return runDialogueAi('你是一位唐朝说书人，负责生成客人的进店台词。', prompt, fallback, opts);
+}
+
+/** 客人回应（2.3：玩家每次对话选择后；AI 不可用 → 按心情 GUEST_REPLIES 5 套随机） */
+export async function generateGuestReply(
+  guest: Guest,
+  mood: GuestMood,
+  playerLine: string,
+  opts: NarrationOptions = {}
+): Promise<string> {
+  const fallback = buildGuestReply(mood, guest.name);
+  const moodCfg = MOOD_CONFIGS[mood];
+  const prompt =
+    '你是一位唐朝长安城的' + (GUEST_TYPE_LABEL[guest.type] ?? '客人') + guest.name + '，今日心情：' + moodCfg.label +
+    '（' + moodCfg.styleHint + '）。你的需求：' + guest.description + '。' +
+    "掌柜的刚才对你说：'" + playerLine + "'。请以你的身份回应，1-3句话，口语化，符合唐代市井语言风格。不要替掌柜做决定。不要编造系统没给你的数字。";
+  return runDialogueAi('你是一位唐朝说书人，负责生成客人的回应台词。', prompt, fallback, opts);
+}
+
+/** 结果叙事（2.3 / 模块一：成交/失败场景描写；fallback 由各店系统插值提供） */
+export async function generateResolutionNarrative(
+  guest: Guest,
+  shopType: ShopType,
+  ok: boolean,
+  fallback: string,
+  opts: NarrationOptions = {}
+): Promise<string> {
+  const prompt =
+    '你是一位唐朝说书人，为' + shopDisplayName(shopType) + '的一次接待写结果场景描写。客人：' + guest.name +
+    '（' + (GUEST_TYPE_LABEL[guest.type] ?? '客人') + '），本单' + (ok ? '成交' : '未成交') + '。' +
+    '要求：3-5句，生动描写场景与人物神态，含一句客人关键台词（用引号包裹）。不要改变结果，不要编造系统没给你的数字。';
+  return runDialogueAi('你是一位唐朝说书人，负责为接待结果写叙事。', prompt, fallback, opts);
 }

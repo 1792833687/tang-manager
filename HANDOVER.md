@@ -37,7 +37,84 @@
 - **八种结局**：一代商圣/皇商之路/归隐田园/商界教父/家道中落/权倾朝野/无人问津/执棋者（隐藏）
 - **UI 打磨**：12 面板切面切换、功能解锁 12 项、统一 modal-container 弹窗、action-feedback 浮动反馈、按钮点击/悬停反馈、formatMoney 金额取整、通知系统（3 条排队）
 
-## 三、当前进度（E1 + E2 完成）
+## 接待系统重设计（2026-08-05 · 模块一~七）
+
+**目标**：三店接待特色化（酒楼宴席/布庄量身/药铺问诊）、对话感（状态机 + AI 对话）、决策后故事弹窗。
+
+| 模块 | 内容 | 关键文件 |
+|---|---|---|
+| 一 | 三店独立接待流程（纯函数，rng 注入，禁止共用处理函数） | src/systems/tang-reception-tavern.ts / tang-reception-clothier.ts / tang-reception-herbalist.ts；配置 src/config/tang-reception-content.ts |
+| 二 | 对话状态机（greeting→player_response→guest_reply→recommend→guest_feedback→follow_up→resolution）+ 心情系统 + 对话 UI | src/systems/tang-dialogue-engine.ts；src/components/tang-manager/dialogue-panel.tsx |
+| 三 | 店员提醒（每阶段最多 1 条：阿昭/账房/护卫，可采纳/忽略） | src/systems/tang-staff-reminders.ts |
+| 四 | 故事弹窗（叙事+NPC台词+数值小字+打字机） | src/components/tang-manager/story-modal.tsx；src/config/tang-story-templates.ts |
+| 五 | AI 对话接入（开场白/回应/结果叙事；>8s 超时降级模板；模板池：开场 10/店、回应 5/心情、成交 8/店、失败 5/店、评价 5/店） | src/systems/tang-narrator.ts（新增 generateGuestGreeting/generateGuestReply/generateResolutionNarrative）；src/config/tang-dialogue-templates.ts |
+| 六 | Store：dialogueHistory + appendDialogue/clearDialogue/setGuestMood/completeDialogueReception/showStoryNarrative/dismissStoryNarrative（persist 保持 v16，新字段不持久化） | src/stores/tang-manager.ts；src/types/tang-dialogue.ts |
+| 七 | 测试：+5 文件 43 用例（tavern/clothier/herbalist/dialogue-engine/staff-reminders） | tests/unit/systems/tang-reception-*.test.ts 等 |
+
+**接线**：reception-panel 当前客人卡改用 DialoguePanel（右上「传统操作」可切回旧六操作）；page.tsx 全局挂载 StoryModal；event-panel 事件决策后弹故事弹窗。AI 不可用/离线/超时一律模板兜底，绝不 throw。
+
+---## 店员互动提升（2026-08-05 · 模块一~六）
+
+**目标**：阿昭与员工从数值面板变为会主动观察/提醒/给建议的"活人"。
+
+| 模块 | 内容 | 关键文件 |
+|---|---|---|
+| 一 | 经营全局提醒系统：generateStaffReminders（条件过滤→优先级排序→同阶段最多 2 条）/ applyReminderEffect（采纳→效果+满意度+2；忽略×3→满意度-5） | src/systems/tang-staff-reminders.ts；src/types/tang-reminders.ts |
+| 二 | 各店员提醒池（阿昭/账房/厨师/裁缝/药师/护卫；清晨/接待/午后/打烊/库存/金融/员工 阶段，~25 条） | src/config/tang-staff-reminder-pools.ts |
+| 三 | 提醒气泡 UI（30×30 头像/三角气泡/照办·知道了/高朱砂·中描金·低竹青/滑出淡入）+ 宿主（最多 2 条 + 问候/报告横幅） | src/components/tang-manager/staff-reminder-bubble.tsx / staff-reminder-host.tsx |
+| 四 | 每日清晨随机员工问候 + 打烊按满意度分档报告（积极/中性/消极/沉默） | src/systems/tang-staff-daily.ts |
+| 五 | Store：staffReminders/staffIgnoreCounts/dailyStaffGreeting/dailyStaffReport + generateReminders/applyReminder/dismissReminder/clearReminders/setDailyStaffGreeting/setDailyStaffReport；persist **v17**（保留旧存档 + 新字段取 base 初始态） | src/stores/tang-manager.ts |
+| 六 | 测试：tang-staff-reminders（14）+ tang-staff-daily（7）= +15 用例 | tests/unit/systems/tang-staff-*.test.ts |
+
+**接线**：startNewDay 清晨 → 问候 + morning 提醒；settleDay 打烊 → 报告 + closing 提醒；StaffReminderHost 挂 main 顶部（接待对话区上方即全局顶部）；采纳效果落账（阿昭满意度/好感直接应用，其余记 eventLog 供后续系统接线）。
+
+---## 店铺特色产业系统（2026-08-05 · 模块一~六）
+
+**目标**：三店各自拥有独特深度玩法（酒楼研发+宴席 / 布庄织造合作+定制 / 药铺坐堂医+药方），完全独立、各 5 级升级路径。
+
+| 模块 | 内容 | 关键文件 |
+|---|---|---|
+| 一 | 酒楼：新菜研发（方向/投入/厨师/1-5天/大成功10%·成功70%·失败20% + 招牌菜机制）+ 宴席承办（寿/婚/洗尘/饯行/商会宴；筹备6-8菜+酒水+雅间；结算净利+声望+引荐） | src/systems/tang-tavern-recipes.ts / tang-tavern-banquets.ts |
+| 二 | 布庄：织造合作（寻访织工/技艺→抽成/寄卖分账/满意度离开）+ 定制订单（嫁衣/官服/寿衣/常服/批量；交货完美/基本/瑕疵/拒收） | src/systems/tang-clothier-cooperative.ts / tang-clothier-custom-orders.ts |
+| 三 | 药铺：坐堂医（聘请/专长/医术→月薪·病患/每日自动问诊·开方/库存匹配·缺药降满意度/误诊纠纷）+ 药方研发（汤丸散膏/2-7天/成功·改良·失败/独家秘方品质≥4·售价+50%·泄露风险） | src/systems/tang-herbalist-physician.ts / tang-herbalist-recipes.ts |
+| 四 | 升级路径（三产业各 5 级）+ 经营之道（me 面板产业等级/进度/条件/手札贺词） | src/config/tang-industry-content.ts；src/components/tang-manager/industry-panel.tsx（挂载 me-panel） |
+| 五 | Store：tavernDishes/tavernBanquets/tavernLevel/weavers/customOrders/clothierLevel/physicians/herbRecipes/herbalistLevel 等 17 字段 + 17 actions + industryTick（每日研发/宴席/问诊/补货）+ persist **v18** | src/stores/tang-manager.ts |
+| 六 | 测试：6 新文件 37 用例（tavern-recipes/tavern-banquets/clothier-cooperative/clothier-custom-orders/herbalist-physician/herbalist-recipes） | tests/unit/systems/tang-*-*.test.ts |
+
+**接线**：startNewDay 清晨调用 industryTick（研发到期结算/宴席到期举办/郎中坐堂问诊/织工补货）；me 面板「经营之道」展示三产业等级与升级；采纳式升级带手札贺词。三产业逻辑完全独立（各自 systems 文件，不共用处理函数）。
+
+---## 地图与事件系统深化（2026-08-05 · 模块一~八）
+
+**目标**：长安舆图成为探索空间（节点微型故事+居民对话），随机事件不再单调（分支连锁/区域风味/多样触发/疲劳度）。
+
+| 模块 | 内容 | 关键文件 |
+|---|---|---|
+| 一 | 节点微型故事（首次必触发/重复 30%/特殊时机）+ 节点居民对话（店伙计/老住户/路人/小孩；部分带效果如羊肉进价-10%） | src/systems/tang-node-stories.ts / tang-node-residents.ts；config/tang-node-stories-content.ts；map-node-card 加「听一段轶闻/与居民攀谈」 |
+| 二 | 事件选择影响追踪（eventHistory/pendingConsequences）+ 连锁事件（邻居借粮/官府征用/乞丐讨食/竞争对手分支树 A/B/C；指定天数到期自动触发） | src/systems/tang-event-consequences.ts |
+| 三 | 四区域特色事件池（永乐坊邻里/东市商业/西市胡商/长安城权力，各 4-5 事件×3 选项） | config/tang-events-yongle.ts / east-market / west-market / changan |
+| 四 | 触发条件多样化（行为/库存/人际 → checkBehaviorTriggers）+ 事件疲劳度（30天/事件、7天/类2次、连续3天休息、一次性） | src/systems/tang-event-fatigue.ts |
+| 五 | 事件叙事增强：AI 场景/结果叙事 + 正面/负面结果模板兜底（≥3 套） | config/tang-story-templates.ts（RESULT_TEMPLATES）；既有 AiNarration |
+| 六 | 地图可视化：活跃事件节点脉冲光晕（金=商机/红=威胁） | src/components/map-view.tsx |
+| 七 | Store：eventHistory/pendingConsequences/nodeStoriesRevealed/eventFatigue + recordEvent/addPendingConsequence/checkPendingConsequences/revealNodeStory/triggerRegionEvent + persist **v19**；startNewDay 每日查连锁；resolveEventChoice 记录选择+登记连锁+疲劳 | src/stores/tang-manager.ts |
+| 八 | 测试：3 新文件 14 用例（node-stories/event-consequences/event-fatigue） | tests/unit/systems/tang-*.test.ts |
+
+**接线**：resolveEventChoice → 记录 eventHistory + 登记 pendingConsequences + 疲劳度；startNewDay → checkPendingConsequences（到期弹窗+数值应用）；map-node-card 轶闻/攀谈；map-view 事件节点脉冲。区域事件经 triggerRegionEvent 入队。
+
+---## v1.1 深化整合（2026-08-05 · 五大模块）
+
+整合规格书五大模块全部落地：① 接待重设计 ② 店员互动提升 ③ 店铺特色产业 ④ 地图与事件深化 ⑤ **AI 文本生成全量接入**。
+
+| v1.1 模块 | 交付 |
+|---|---|
+| 一 接待重设计 | dialogue-panel + story-modal + 三店独立接待系统（见前章节） |
+| 二 店员互动 | staff-reminder-bubble/host + 各店员提醒池 + 晨间问候/打烊报告 |
+| 三 产业系统 | 三产业独立玩法 + 5 级升级 + 经营之道 |
+| 四 地图事件 | 节点故事/居民 + 事件连锁 + 四区域事件池 + 疲劳度 + 地图脉冲光晕 |
+| 五 **AI 全量接入** | 统一生成器 `tang-ai-generator.ts`（8 类内容 × 专用系统提示词；优先级：类型开关→在线→key→AI 8s→模板；流式/非流式统一；静默降级）；店员提醒/节点故事已接线 AI 优先；兜底模板聚合 `tang-fallback-templates.ts`；store：`aiContentToggles`（天机阁逐类开关）+ `aiGenerationLog`（调试成功率）+ persist **v20** |
+
+**验收**：tsc 零错误 → 全量 **89 文件 / 1116 用例全绿**（零回归）→ build 成功（251kB）。五模块提交见 git log（d236d88 / f7308e3 / 041fbbb / 563614f / +AI）。
+
+---## 三、当前进度（E1 + E2 完成）
 
 | 阶段 | 状态 | 说明 |
 |---|---|---|
@@ -48,7 +125,7 @@
 ## 四、测试基线
 
 - 源项目：**1567 用例全绿**（119 文件）
-- 新项目：73 测试文件复制到位（store-instantiation.test.ts 已剔除——引凛冬 store 非 tang 属）；实测 **1000 用例全绿**（源 1567 为全量含凛冬，tang 独立部分即 1000，2026-08-04 验收通过）
+- 新项目：89 测试文件（+1 AI 全量接入）；实测 **1116 用例全绿**（2026-08-05 v1.1 整合验收：tsc 零错误 → 全量 1116 → build 串行通过）
 - vitest.config.ts 已裁剪（移除 memory/dialogue/map 覆盖率阈值），setup.ts 已去 map 夹具
 - tests 从 tsconfig 排除（沿用源做法，tsc 只查 src）
 - 稳定姿势：pool threads / minWorkers 1 / maxWorkers 2 / testTimeout 30s（已固化 config）
@@ -110,4 +187,4 @@
 | src/theme/tokens.ts | ANCIENT 设计令牌（唯一事实源） |
 | public/sw.js | network-first Service Worker（v7.0.0） |
 | scripts/validate-game-data.mjs | 数值校验脚本（开局容量/30 天不破产） |
-| tests/unit/ | 73 测试文件（1000 用例全绿） |
+| tests/unit/ | 89 测试文件（1116 用例全绿） |

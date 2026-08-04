@@ -32,6 +32,8 @@ import { CaravanPanel } from '@/components/caravan-panel';
 import { DashboardContainer } from '@/components/dashboard-container';
 import { DifficultyPanel } from '@/components/difficulty-panel';
 import { EndingOverlay } from '@/components/ending-overlay';
+import { StoryModal } from '@/components/tang-manager/story-modal';
+import { StaffReminderHost } from '@/components/tang-manager/staff-reminder-host';
 import { EventPanel } from '@/components/event-panel';
 import { FactionPanel } from '@/components/faction-panel';
 import { IdentityPanel } from '@/components/identity-panel';
@@ -326,6 +328,7 @@ export default function TangManagerPage(): React.ReactElement {
             <NavSidebar active={activePanel} onSelect={handleSelect} disabled={phase !== 'playing'} />
             {/* pb-20 为移动端底部 Tab 预留留白；md+ 桌面侧栏布局恢复 pb-4 */}
             <main className="flex flex-1 flex-col gap-4 p-4 pb-20 md:pb-4">
+      <StaffReminderHost />
               <SceneBanner />
               {phase === 'identity' && <IdentityPanel />}
               {phase === 'shop-type' && <ShopTypePanel />}
@@ -364,6 +367,7 @@ export default function TangManagerPage(): React.ReactElement {
           <InvestmentResult />
           {/* 多结局全屏弹窗（v1.0 由 nav-sidebar 迁移至主框架，移动端/桌面端均可见） */}
           <EndingOverlay />
+      <StoryModal />
           {/* 功能解锁浮现提示（v1.0 模块二；无新解锁时返回 null） */}
           <FeatureUnlockToast />
           {/* 通知弹条（v1.0 模块四；右上角 3s；无通知时返回空） */}

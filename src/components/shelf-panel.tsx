@@ -15,6 +15,8 @@ import { AncientCard } from './ancient-card';
 import { getExpiryLabel, getSeason, getStorageFeeDetail, totalVolumeOf, warehouseHealth } from '@/systems/tang-expiry';
 import { ProcurementPanel } from './procurement-panel';
 import { MarketListingPanel } from './market-listing-panel';
+import { MarketReportPanel } from './market-report-panel';
+import { ModalContainer } from './modal-container';
 import { ProcessingPanel } from './processing-panel';
 import { AssemblePanel } from './assemble-panel';
 import { ForwardContractPanel } from './forward-contract-panel';
@@ -22,7 +24,7 @@ import { TutorialHighlight } from './tutorial-highlight';
 
 type FilterKey = '全部' | '食材' | '布匹' | '药材';
 type SortKey = 'expiry' | 'stock';
-type PanelKey = 'procurement' | 'market' | 'forward' | 'processing' | 'assemble' | null;
+type PanelKey = 'procurement' | 'market' | 'forward' | 'processing' | 'assemble' | 'report' | null;
 
 const CATEGORY_ICON: Record<string, string> = { 食材: '🥩', 布匹: '🧵', 药材: '🌿' };
 const FILTERS: readonly FilterKey[] = ['全部', '食材', '布匹', '药材'];
@@ -55,6 +57,8 @@ function GoodsRow({ itemId }: { itemId: string }): React.ReactElement {
       <span className="min-w-0 flex-1 truncate text-sm font-semibold" style={{ color: ANCIENT.text }}>
         {CATEGORY_ICON[item.category] ?? '📦'} {item.name}
       </span>
+      <span className="shrink-0 text-xs font-semibold" style={{ color: ANCIENT.gold }}>售 {formatMoney(item.price ?? 0)}</span>
+      <span className="shrink-0 text-[10px]" style={{ color: ANCIENT.secondary }}>本 {formatMoney(item.cost ?? 0)}</span>
       <span className="shrink-0 text-xs" style={{ color: ANCIENT.secondary }}>库存 {item.stock}</span>
       <span title={label.text} className="shrink-0 rounded-full" style={{ width: 8, height: 8, backgroundColor: TONE[label.tone] ?? ANCIENT.secondary }} />
       {!priceMode ? (
@@ -139,8 +143,9 @@ export function ShelfPanel(): React.ReactElement {
         {visible.length === 0 && <p className="py-4 text-center text-sm tracking-widest" style={{ color: ANCIENT.secondary }}>货架空空，待进货后陈列。</p>}
       </div>
 
-      <div className="mt-2 grid grid-cols-2 gap-1.5 sm:grid-cols-5">
+      <div className="mt-2 grid grid-cols-2 gap-1.5 sm:grid-cols-6">
         <button type="button" onClick={() => setPanel('market')} className="rounded px-1.5 py-1.5 text-xs" style={{ backgroundColor: ANCIENT.card, border: `1px solid ${ANCIENT.gold}`, color: ANCIENT.secondary }}>市易务挂牌（{listingCount}）</button>
+        <button type="button" onClick={() => setPanel('report')} className="rounded px-1.5 py-1.5 text-xs" style={{ backgroundColor: ANCIENT.card, border: `1px solid ${ANCIENT.gold}`, color: ANCIENT.secondary }}>市场调查</button>
         <button type="button" onClick={() => setPanel('procurement')} className="rounded px-1.5 py-1.5 text-xs" style={{ backgroundColor: ANCIENT.card, border: `1px solid ${ANCIENT.gold}`, color: ANCIENT.secondary }}>采买补货</button>
         <TutorialHighlight guideId="FIRST_FORWARD_CONTRACT">
           <button type="button" onClick={() => setPanel('forward')} className="w-full rounded px-1.5 py-1.5 text-xs" style={{ backgroundColor: ANCIENT.card, border: `1px solid ${ANCIENT.gold}`, color: ANCIENT.secondary }}>籴粜契</button>
@@ -179,6 +184,11 @@ export function ShelfPanel(): React.ReactElement {
       )}
 
       {panel === 'procurement' && <ProcurementPanel onClose={() => setPanel(null)} />}
+      {panel === 'report' && (
+        <ModalContainer title="市场调查报告" onClose={() => setPanel(null)} showConfirm={false}>
+          <MarketReportPanel />
+        </ModalContainer>
+      )}
       {panel === 'market' && <MarketListingPanel onClose={() => setPanel(null)} />}
       {panel === 'forward' && <ForwardContractPanel onClose={() => setPanel(null)} />}
       {panel === 'processing' && <ProcessingPanel onClose={() => setPanel(null)} />}

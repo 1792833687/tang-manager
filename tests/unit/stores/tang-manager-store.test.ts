@@ -516,3 +516,17 @@ describe('Step 5b · 今日要务与阿昭涨薪（2026-08-06 补 UI 后的逻�
     expect(store.azhaoRaiseSalary()).toBe(false);
   });
 });
+describe('Step 5b · 市井消息（2026-08-06 新增系统）', () => {
+  it('startNewDay 清晨生成市井消息并保留最近 10 条', () => {
+    const store = useTangManagerStore.getState();
+    store.initByDifficulty('B');
+    expect(useTangManagerStore.getState().streetNews ?? []).toHaveLength(0);
+    store.startNewDay();
+    const news = useTangManagerStore.getState().streetNews ?? [];
+    expect(news.length).toBeGreaterThan(0);
+    expect(news.length).toBeLessThanOrEqual(10);
+    // 再推进一天：累积但不超过 10
+    store.startNewDay();
+    expect((useTangManagerStore.getState().streetNews ?? []).length).toBeLessThanOrEqual(10);
+  });
+});

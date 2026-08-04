@@ -2022,6 +2022,8 @@ export interface TangGameState {
   todayTasks?: DailyTask[];
   /** 今日要务已完成的 id（打烊盖「了」红印后记录） */
   todayTasksCompleted?: string[];
+  /** 市井消息（2026-08-06 新增系统；每日清晨生成 1-2 条，保留最近 10 条） */
+  streetNews?: string[];
   /** 今日要务「用通晓人心」额外奖励的次数（打烊奖励发放用） */
   todayTaskMindReadBonus?: number;
   /** 已触发稀有事件 id（意外之喜去重） */
@@ -2479,6 +2481,8 @@ export interface TangManagerStore extends TangGameState {
   dismissHexagramCard: () => void;
   /** 清晨生成今日要务（排除昨日已完成；写入 todayTasks） */
   generateDailyTasks: () => DailyTask[];
+  /** 清晨生成市井消息（2026-08-06 新增系统） */
+  generateStreetNews: () => string[];
   /** 打烊判定今日要务完成并发放奖励（盖「了」红印；返回新完成 id） */
   checkDailyTasks: () => string[];
   /** 清晨检测遗命触发（条件+前置完成；写入 activeLegacyQuest） */

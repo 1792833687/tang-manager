@@ -118,6 +118,18 @@ export function ReceptionPanel(): React.ReactElement {
         </div>
       )}
 
+      {/* 市井消息（2026-08-06 新增系统：每日清晨 1-2 条长安传闻，暗藏行情提示） */}
+      {(state.streetNews ?? []).length > 0 && (
+        <div className="rounded-xl px-3 py-2" style={{ backgroundColor: ANCIENT.card, border: `1px solid ${ANCIENT.gold}` }}>
+          <div className="text-xs font-bold tracking-[0.3em]" style={{ color: ANCIENT.gold }}>市井消息</div>
+          <div className="mt-1.5 flex flex-col gap-1">
+            {(state.streetNews ?? []).slice(-3).map((n, i) => (
+              <p key={i} className="text-xs leading-5" style={{ color: ANCIENT.text }}>· {n}</p>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* TANG-TRF-001：接待 / 预购订单 双标签 */}
       <div className="flex gap-2 text-xs tracking-widest">
         <button

@@ -15,6 +15,7 @@ import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 import { v4 as uuidv4 } from 'uuid';
 import { getDifficultyParams } from '@/config/tang-difficulty';
+import { STREET_NEWS_POOL, STREET_NEWS_KEEP } from '@/config/tang-street-news';
 import { INITIAL_GOODS } from '@/config/tang-initial-goods';
 import { EVENT_DEFINITIONS, EVENT_MAP, buildSeizureEvent } from '@/config/tang-events';
 import { createZustandPersistStorage } from '@/infrastructure/storage/zustand-persist-bridge';
@@ -1004,6 +1005,7 @@ function npcIntelContextOf(s: TangManagerStore): Parameters<typeof performBuyInf
   | 'dismissMessage'
   | 'purchaseShopAsset'
   | 'azhaoRaiseSalary'
+  | 'generateStreetNews'
 > {
   const b = getDifficultyParams('B');
   return {
@@ -1216,6 +1218,7 @@ function npcIntelContextOf(s: TangManagerStore): Parameters<typeof performBuyInf
     todayHexagram: null,
     todayTasks: [],
     todayTasksCompleted: [],
+    streetNews: [],
     todayTaskMindReadBonus: 0,
     completedRareEvents: [],
     hexagramCardOpen: false,
@@ -1945,6 +1948,7 @@ export const useTangManagerStore = create<TangManagerStore>()(
             todayHexagram: null,
             todayTasks: [],
             todayTasksCompleted: [],
+            streetNews: [],
             todayTaskMindReadBonus: 0,
             hexagramCardOpen: false,
             activeBet: null,
@@ -2159,6 +2163,7 @@ export const useTangManagerStore = create<TangManagerStore>()(
         // ---- TANG-ADD-001 清晨钩子（在 day 推进与重置后依次执行；各钩子自带 set）----
         get().drawDailyHexagram();
         get().generateDailyTasks();
+        get().generateStreetNews();
         get().triggerLegacyQuest();
         get().checkBiographies();
         if (get().day % 30 === 1) {
@@ -3089,6 +3094,24 @@ export const useTangManagerStore = create<TangManagerStore>()(
         const tasks = generateDailyTasksSystem(s.todayTasksCompleted ?? []);
         set({ todayTasks: tasks, todayTasksCompleted: [] });
         return tasks;
+      },
+      /** 清晨生成市井消息（2026-08-06 新增系统；随机 1-2 条，保留最近 STREET_NEWS_KEEP 条） */
+      generateStreetNews: (): string[] => {
+        const s = get();
+        const pool = [...STREET_NEWS_POOL];
+        const count = 1 + Math.floor(Math.random() * Math.min(2, pool.length));
+        const picked: string[] = [];
+        const seen = new Set(s.streetNews ?? []);
+        for (let i = 0; i < count && pool.length > 0; i++) {
+          const idx = Math.floor(Math.random() * pool.length);
+          const msg = pool.splice(idx, 1)[0]!;
+          if (!seen.has(msg)) picked.push(msg);
+        }
+        if (picked.length === 0 && STREET_NEWS_POOL.length > 0) {
+          picked.push(STREET_NEWS_POOL[Math.floor(Math.random() * STREET_NEWS_POOL.length)]!);
+        }
+        set({ streetNews: [...(s.streetNews ?? []), ...picked].slice(-STREET_NEWS_KEEP) });
+        return picked;
       },
 
       /** 打烊判定今日要务完成并发放奖励（盖「了」红印；返回新完成 id） */
@@ -4271,6 +4294,12 @@ export const useTangManagerStore = create<TangManagerStore>()(
         const eventAdd: string[] = [`afternoon:visit_npc:${s.day}`, `[第${s.day}日] ${visit.narrative}`];
         if (visit.familyStoryLine) eventAdd.push(`[第${s.day}日] 陆伯顿了顿，说起一段旧事：${visit.familyStoryLine}`);
         if (visit.decreePreview) eventAdd.push(`[第${s.day}日] ${visit.decreePreview}`);
+        // K3 修复（2026-08-06）：上官政令预知 → 实际预生成 Decree（此前仅静态文案，未生成政令对象）
+        let extraDecrees: Decree[] | undefined;
+        if (visit.decreePreview) {
+          const d = generateImperialDecree({ day: s.day, decrees: s.decrees ?? [] });
+          if (d) extraDecrees = [...(s.decrees ?? []), d];
+        }
         if (visit.ayingClueHint) eventAdd.push(`[第${s.day}日] ${visit.ayingClueHint}`);
         for (const t of favorRes.functionUnlocks) eventAdd.push(`[第${s.day}日] ${t}`);
 
@@ -4282,6 +4311,7 @@ export const useTangManagerStore = create<TangManagerStore>()(
           afternoonActions: [...s.afternoonActions, 'visit_npc'],
           dailyEnergyConsumed: s.dailyEnergyConsumed + NPC_VISIT_ENERGY_COST,
           eventLog: [...s.eventLog, ...eventAdd],
+          ...(extraDecrees ? { decrees: extraDecrees } : {}),
         };
         if (npcId === 'lu_old_servant') {
           const nextCount = (s.npcConvoCounts?.[npcId] ?? 0) + 1;
@@ -4793,7 +4823,21 @@ export const useTangManagerStore = create<TangManagerStore>()(
           get().enterBankruptcy();
           return result.settlement;
         }
-        // 店员互动提升（模块四/五）：打烊随机员工报告 + 打烊阶段提醒（startNewDay 前，取当日净收益）
+        // K9 修复（2026-08-06）：社交员工事件此前仅 eventLog 记录、无 UI 弹窗；有事件时弹故事窗
+        if (socialEvents.length > 0) {
+          const firstSocial = socialEvents[0];
+          if (firstSocial) {
+            set({
+              storyNarrative: {
+                title: firstSocial.title ?? '伙计间事',
+                body: firstSocial.description,
+                numbers: [firstSocial.employeeName ?? ''],
+                source: 'template',
+              },
+            });
+          }
+        }
+                // 店员互动提升（模块四/五）：打烊随机员工报告 + 打烊阶段提醒（startNewDay 前，取当日净收益）
         get().generateReminders('closing', { ...buildReminderContext(s, 'closing'), todayNetProfit: netIncome });
         set({
           dailyStaffReport: pickStaffReport({
@@ -6649,6 +6693,7 @@ export const useTangManagerStore = create<TangManagerStore>()(
         // TANG-ADD-001：成瘾性玩法模块（持久化数据字段；overlay 开关/瞬时展示不持久化）
         todayHexagram: s.todayHexagram?.id ?? null,
         todayTasks: s.todayTasks,
+  streetNews: s.streetNews,
         todayTasksCompleted: s.todayTasksCompleted,
         todayTaskMindReadBonus: s.todayTaskMindReadBonus,
         completedRareEvents: s.completedRareEvents,

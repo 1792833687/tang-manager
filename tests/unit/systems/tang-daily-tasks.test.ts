@@ -32,34 +32,37 @@ const track: DailyTaskTrack = {
   guestsHandled: 5,
   guestsTotal: 5,
   rejectedGuests: 0,
+  banquetHosted: 1,
+  diagnosed: 1,
+  customOrderMade: 1,
 };
 
 describe('generateDailyTasks · 抽取', () => {
-  it('清晨抽 2 个；默认从 8 要务池抽取', () => {
-    const tasks = generateDailyTasks([], seq(0.1, 0.4));
+  it('清晨抽 2 个；默认从 11 要务池抽取', () => {
+    const tasks = generateDailyTasks('jiulou', [], seq(0.1, 0.4));
     expect(tasks).toHaveLength(2);
     expect(new Set(tasks.map((t) => t.id)).size).toBe(2);
   });
 
-  it('排除昨日已完成：昨日完成 6 项 → 今日只从剩余 2 项抽', () => {
+  it('排除昨日已完成：昨日完成 6 项 → 今日只从剩余 5 项抽', () => {
     const allIds = DAILY_TASKS.map((t) => t.id);
     const done = allIds.slice(0, 6);
-    const tasks = generateDailyTasks(done, seq(0, 0.9));
+    const tasks = generateDailyTasks('jiulou', done, seq(0, 0.9));
     expect(tasks.length).toBeLessThanOrEqual(2);
     for (const t of tasks) {
       expect(done).not.toContain(t.id);
     }
   });
 
-  it('池不足时按可抽取数返回（昨日完成 7 项 → 抽 1）', () => {
-    const done = DAILY_TASKS.map((t) => t.id).slice(0, 7);
-    const tasks = generateDailyTasks(done, seq(0));
+  it('池不足时按可抽取数返回（昨日完成 8 项 → 抽 1）', () => {
+    const done = DAILY_TASKS.map((t) => t.id).slice(0, 8);
+    const tasks = generateDailyTasks('jiulou', done, seq(0));
     expect(tasks).toHaveLength(1);
   });
 
   it('昨日全部完成 → 抽 0（下一日重新纳入）', () => {
     const done = DAILY_TASKS.map((t) => t.id);
-    expect(generateDailyTasks(done, seq(0))).toHaveLength(0);
+    expect(generateDailyTasks('jiulou', done, seq(0))).toHaveLength(0);
   });
 });
 
@@ -90,9 +93,9 @@ describe('taskConditionMet · 条件判定', () => {
 });
 
 describe('checkTaskCompletion · 结算', () => {
-  it('全条件满足 → 返回 8 个完成 id（奖励随 task.reward 映射）', () => {
+  it('全条件满足 → 返回 11 个完成 id（奖励随 task.reward 映射）', () => {
     const newly = checkTaskCompletion(DAILY_TASKS, track);
-    expect(newly).toHaveLength(8);
+    expect(newly).toHaveLength(11);
     expect(newly).toContain('task-big-order');
     expect(newly).toContain('task-chat');
   });
@@ -100,11 +103,11 @@ describe('checkTaskCompletion · 结算', () => {
   it('已完成的 id 不再重复返回', () => {
     const newly = checkTaskCompletion(DAILY_TASKS, track, ['task-big-order']);
     expect(newly).not.toContain('task-big-order');
-    expect(newly).toHaveLength(7);
+    expect(newly).toHaveLength(10);
   });
 
   it('条件不满足的要务不完成', () => {
-    const bad: DailyTaskTrack = { ...track, netProfit: 0, bigOrderHandled: 0, mindReadUsed: 0, silkSold: 0, marketDealTriggered: false, chatUsed: 0, complaints: 3, guestsHandled: 0, rejectedGuests: 5 };
+    const bad: DailyTaskTrack = { ...track, netProfit: 0, bigOrderHandled: 0, mindReadUsed: 0, silkSold: 0, marketDealTriggered: false, chatUsed: 0, complaints: 3, guestsHandled: 0, rejectedGuests: 5, banquetHosted: 0, diagnosed: 0, customOrderMade: 0 };
     const newly = checkTaskCompletion(DAILY_TASKS, bad);
     expect(newly).toHaveLength(0);
   });
@@ -165,5 +168,23 @@ describe('checkWeeklyTasks / addWeeklyProgress · 进度判定与累加', () => 
     expect(addWeeklyProgress({}, 'week-preorder', 1)).toEqual({ 'week-preorder': 1 });
     expect(addWeeklyProgress({ 'week-preorder': 1 }, 'week-preorder', 2)).toEqual({ 'week-preorder': 3 });
     expect(addWeeklyProgress({}, 'week-preorder', -5)).toEqual({ 'week-preorder': 0 });
+  });
+});
+
+describe('产业要务过滤（2026-08-06）', () => {
+  it('卖丝绸三匹配置仅布庄；药铺生成绝不出现该任务', () => {
+    expect(DAILY_TASKS.find((x) => x.id === 'task-sell-silk')!.shops).toEqual(['buzhuang']);
+    for (let i = 0; i < 12; i++) {
+      const titles = generateDailyTasks('yaopu', [], Math.random).map((x) => x.title);
+      expect(titles).not.toContain('卖丝绸三匹');
+    }
+  });
+  it('产业专属要务出现在对应产业', () => {
+    const ji = generateDailyTasks('jiulou', [], () => 0.99).map((x) => x.title).join(',');
+    const ya = generateDailyTasks('yaopu', [], () => 0.99).map((x) => x.title).join(',');
+    const bu = generateDailyTasks('buzhuang', [], () => 0.99).map((x) => x.title).join(',');
+    expect(ji).toContain('承办宴席');
+    expect(ya).toContain('亲自坐诊');
+    expect(bu).toContain('完成定制');
   });
 });

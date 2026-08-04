@@ -40,6 +40,7 @@ export const DAILY_TASKS: readonly DailyTask[] = [
     condition: { silkSold: 3 },
     reward: { score: 0.02 },
     stampText: '了',
+    shops: ['buzhuang'], // 2026-08-06：卖丝绸仅布庄可完成
   },
   {
     id: 'task-market-deal',
@@ -72,6 +73,33 @@ export const DAILY_TASKS: readonly DailyTask[] = [
     condition: { allGuestsHandled: true },
     reward: { energy: 10 },
     stampText: '了',
+  },
+  {
+    id: 'task-banquet',
+    title: '承办宴席',
+    description: '今日须好生承办一场宴席，宾主尽欢方不负酒楼名声。',
+    condition: { banquetHosted: true },
+    reward: { reputation: 8 },
+    stampText: '了',
+    shops: ['jiulou'],
+  },
+  {
+    id: 'task-diagnose',
+    title: '亲自坐诊',
+    description: '今日须亲自坐诊开方，悬壶济世是为药铺本分。',
+    condition: { diagnosed: true },
+    reward: { reputation: 8 },
+    stampText: '了',
+    shops: ['yaopu'],
+  },
+  {
+    id: 'task-custom',
+    title: '完成定制',
+    description: '今日须为客人量身定制一套衣裳，针脚里见功夫。',
+    condition: { customOrderMade: true },
+    reward: { reputation: 8 },
+    stampText: '了',
+    shops: ['buzhuang'],
   },
 ];
 

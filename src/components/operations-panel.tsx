@@ -13,6 +13,8 @@ import { triggerTutorial } from '@/systems/tang-tutorial-triggers';
 import { StrategySelector } from './strategy-selector';
 import { BusinessStrategySelector } from './business-strategy-selector';
 import { AfternoonActions } from './afternoon-actions';
+import { TANG_FEATURES } from '@/config/tang-feature-ids';
+import { pushActionFeedback } from './action-feedback';
 
 function StatCell({ label, value, color = ANCIENT.text }: { label: string; value: string; color?: string }): React.ReactElement {
   return (
@@ -31,6 +33,13 @@ const QUICK_LINKS: Array<{ key: string; label: string }> = [
   { key: 'journal', label: '手札录' },
   { key: 'map', label: '长安舆图' },
 ];
+
+/** 未解锁提示（快捷跳转守卫：不跳转，弹解锁条件） */
+function lockedHint(unlocked: Record<string, boolean> | undefined, key: string): string | null {
+  const def = TANG_FEATURES.find((f) => f.id === key);
+  if (!def || unlocked?.[key]) return null;
+  return def.conditions.map((c) => c.hint).join('；');
+}
 
 export function OperationsPanel(): React.ReactElement {
   const s = useTangManagerStore();
@@ -75,7 +84,11 @@ export function OperationsPanel(): React.ReactElement {
         <div className="text-xs font-bold tracking-[0.3em]" style={{ color: ANCIENT.secondary }}>快捷经营</div>
         <div className="mt-2 grid grid-cols-3 gap-1.5">
           {QUICK_LINKS.map((q) => (
-            <button key={q.key} type="button" onClick={() => s.requestNavPanel(q.key)} className="rounded-lg px-2 py-2 text-xs font-bold transition-transform active:scale-[0.97]" style={{ backgroundColor: ANCIENT.background, color: ANCIENT.text, border: `1px solid ${ANCIENT.border}` }}>{q.label}</button>
+            <button key={q.key} type="button" onClick={() => {
+              const hint = lockedHint(s.unlockedFeatures, q.key);
+              if (hint) { pushActionFeedback('尚未解锁：' + hint, 'warning'); return; }
+              s.requestNavPanel(q.key);
+            }} className="rounded-lg px-2 py-2 text-xs font-bold transition-transform active:scale-[0.97]" style={{ backgroundColor: ANCIENT.background, color: ANCIENT.text, border: `1px solid ${ANCIENT.border}` }}>{q.label}</button>
           ))}
         </div>
       </div>

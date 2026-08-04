@@ -32,6 +32,12 @@ export interface DailyTaskTrack {
   guestsTotal: number;
   /** 今日拒客数 */
   rejectedGuests: number;
+  /** 今日承办宴席 */
+  banquetHosted: number;
+  /** 今日亲自坐诊 */
+  diagnosed: number;
+  /** 今日完成定制 */
+  customOrderMade: number;
 }
 
 /** 单任务条件判定 */
@@ -45,15 +51,20 @@ export function taskConditionMet(task: DailyTask, track: DailyTaskTrack): boolea
   if (c.chatUsed && track.chatUsed < 1) return false;
   if (c.noComplaints && track.complaints > 0) return false;
   if (c.allGuestsHandled && track.guestsHandled < track.guestsTotal) return false;
+  if (c.banquetHosted && track.banquetHosted < 1) return false;
+  if (c.diagnosed && track.diagnosed < 1) return false;
+  if (c.customOrderMade && track.customOrderMade < 1) return false;
   return true;
 }
 
 /** 清晨抽 2 个今日要务（排除昨日已完成；池不足按可抽取数返回） */
 export function generateDailyTasks(
+  shopType: string | undefined,
   yesterdayCompleted: readonly string[] = [],
   rng: () => number = Math.random
 ): DailyTask[] {
-  const pool = DAILY_TASKS.filter((t) => !yesterdayCompleted.includes(t.id));
+  // 2026-08-06：按当前产业过滤（卖丝绸仅布庄等；跨产业任务 bug 修复）
+  const pool = DAILY_TASKS.filter((t) => !yesterdayCompleted.includes(t.id) && (!t.shops || t.shops.includes(shopType as never)));
   const picked: DailyTask[] = [];
   const candidates = [...pool];
   const count = Math.min(2, candidates.length);

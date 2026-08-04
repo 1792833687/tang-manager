@@ -315,3 +315,14 @@ tsc 零错误 → 全量 **1142 用例全绿（92 文件）** → build 静态�
 5. 午间自由行动重设计：每个行动点开 → 二级确认弹窗（描述 + 精力消耗 + 行动/再想想），实质执行后反馈；拜访NPC/巡查保留名单与隐患卡。
 
 验收：tsc 零错误 → 全量 1180 用例全绿（96 文件）→ build 静态导出成功 → Playwright：经营面板（数据概况/经营策略/快捷经营/打烊）可见、旧式接待按钮已移除，0 控制台错误。
+
+---
+
+## UI 逻辑修复与功能联动（2026-08-07 · 规格书 4 模块核心落地）
+
+1. 客人服务意图分类：新增 Guest.intent（ServiceIntent：药铺 consultation坐诊/prescription抓药、酒楼 banquet宴席/dine_in堂食、布庄 tailor定制/ready_made成衣），生成客人时按店型×类型自动判定；接待面板显示「本客所求」意图徽标。
+2. 经营面板快捷跳转锁定守卫：快捷经营点击未解锁功能（如钱庄/舆图）→ 弹「尚未解锁：{解锁条件}」提示气泡，不再跳转到空白/错误页。
+3. 今日要务产业适配：DailyTask 新增 shops 字段，卖丝绸三匹仅布庄出现（跨产业任务 bug 修复）；新增产业专属要务——酒楼「承办宴席」/药铺「亲自坐诊」/布庄「完成定制」（条件经 settleBanquetMenu/performDiagnosis/settleFabricOrder 写入 today* 追踪字段）。
+4. store：新增 todayBanquetHosted/todayDiagnosed/todayCustomOrderMade 追踪字段 + 判定接线。
+
+验收：tsc 零错误 → 全量 1182 用例全绿（96 文件，+2 产业要务用例）→ build 静态导出成功 → Playwright：药铺「本客所求·按方抓药」徽标、快捷钱庄点击弹「尚未解锁：第 5 日起，钱庄开门」且不跳转，0 控制台错误。

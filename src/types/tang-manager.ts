@@ -142,10 +142,15 @@ export type HandleMethod = 'normal' | 'mind_read' | 'reject';
 export type LedgerCategory = '经营' | '接待' | '事件' | '支出';
 
 /** 当日访客（Step 2；Step 3 增加反噬/污染/差评师标记） */
+/** 客人在当前产业下的服务意图（2026-08-06 分类：坐诊/抓药/宴席/堂食/定制/成衣） */
+export type ServiceIntent = 'consultation' | 'prescription' | 'banquet' | 'dine_in' | 'tailor' | 'ready_made';
+
 export interface Guest {
   id: string;
   name: string;
   type: GuestType;
+  /** 服务意图（按店型分类：看病/抓药/宴席/堂食/定制/成衣） */
+  intent?: ServiceIntent;
   /** 需求描述（2.9 配置模板） */
   description: string;
   /** 基础消费（两） */
@@ -1259,6 +1264,12 @@ export interface TaskCondition {
   allGuestsHandled?: boolean;
   /** 追加奖励：需完成的要务 id 列表（工程定：连做/连锁） */
   requiresTasks?: string[];
+  /** 今日承办过宴席（产业要务） */
+  banquetHosted?: boolean;
+  /** 今日亲自坐诊过（产业要务） */
+  diagnosed?: boolean;
+  /** 今日完成过定制（产业要务） */
+  customOrderMade?: boolean;
 }
 
 /** 今日要务：奖励 */
@@ -1282,6 +1293,8 @@ export interface DailyTask {
   reward: TaskReward;
   /** 完成盖「了」红印文案 */
   stampText: string;
+  /** 适用产业（缺省 = 全部；如卖丝绸仅布庄） */
+  shops?: ShopType[];
 }
 
 // ============================================================
@@ -2080,6 +2093,12 @@ export interface TangGameState {
   /** 市集捡漏触发（暗标/挂牌采买成功置 true） */
   todayMarketDealTriggered?: boolean;
   todayChatUsed?: number;
+  /** 今日承办宴席数（产业要务） */
+  todayBanquetHosted?: number;
+  /** 今日亲自坐诊数（产业要务） */
+  todayDiagnosed?: number;
+  /** 今日完成定制数（产业要务） */
+  todayCustomOrderMade?: number;
   todayComplaints?: number;
   todayGuestsHandled?: number;
   todayRejectedGuests?: number;

@@ -15,6 +15,7 @@ import { GUEST_DESC_TEMPLATES, GUEST_NAME_POOLS } from '@/config/tang-guest-cont
 import { generatePreferences, revealPreference } from '@/systems/tang-guest-preference';
 import { assignStoryTag } from '@/systems/tang-story-assigner';
 import type { Difficulty, Guest, GuestType, KnownGuestRecord, ShopType } from '@/types/tang-manager';
+import type { ServiceIntent } from '@/types/tang-manager';
 
 /** 类型权重表（百分比；合计 100） */
 const TYPE_WEIGHTS: Record<Difficulty, Record<GuestType, number>> = {
@@ -178,6 +179,30 @@ export function generateDailyGuests(
 
 /** 生成单一位指定类型客人（3.1 事件 special：回头客事件额外 +1 大单/普通客人；5a 3.2 附故事标签；
  *  TANG-RCP-001：附 1-2 个初始未揭示偏好、首访次数/客等/耐心/满意度） */
+/** 服务意图分类（2026-08-06）：按店型×客人类型判定（药铺看病/抓药、酒楼宴席/堂食、布庄定制/成衣） */
+export function assignGuestIntent(shopType: ShopType, type: GuestType): ServiceIntent {
+  if (shopType === 'yaopu') {
+    if (type === 'help' || type === 'observe' || type === 'special') return 'consultation';
+    return 'prescription';
+  }
+  if (shopType === 'jiulou') {
+    if (type === 'big_order' || type === 'special') return 'banquet';
+    return 'dine_in';
+  }
+  if (type === 'big_order' || type === 'special') return 'tailor';
+  return 'ready_made';
+}
+
+/** 服务意图中文标签（接待面板展示） */
+export const SERVICE_INTENT_LABEL: Record<ServiceIntent, string> = {
+  consultation: '坐诊看病',
+  prescription: '按方抓药',
+  banquet: '预定宴席',
+  dine_in: '堂食点菜',
+  tailor: '量身定制',
+  ready_made: '购布成衣',
+};
+
 export function generateSingleGuest(
   shopType: ShopType,
   difficulty: Difficulty,
@@ -203,6 +228,7 @@ export function generateSingleGuest(
     handled: false,
     ...(storyTag ? { storyTag: storyTag.label, storyStage: storyTag.stage } : {}),
     // TANG-RCP-001：偏好 / 首访 / 客等 / 耐心 / 满意度
+    intent: assignGuestIntent(shopType, type),
     preferences,
     preferenceRevealed: false,
     visitCount: 1,

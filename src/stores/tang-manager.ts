@@ -1254,6 +1254,9 @@ function npcIntelContextOf(s: TangManagerStore): Parameters<typeof performBuyInf
     todayMindReadUsed: 0,
     todaySilkSold: 0,
     todayMarketDealTriggered: false,
+    todayBanquetHosted: 0,
+    todayDiagnosed: 0,
+    todayCustomOrderMade: 0,
     todayChatUsed: 0,
     todayComplaints: 0,
     todayGuestsHandled: 0,
@@ -1979,6 +1982,9 @@ export const useTangManagerStore = create<TangManagerStore>()(
             todayMindReadUsed: 0,
             todaySilkSold: 0,
             todayMarketDealTriggered: false,
+            todayBanquetHosted: 0,
+            todayDiagnosed: 0,
+            todayCustomOrderMade: 0,
             todayChatUsed: 0,
             todayComplaints: 0,
             todayGuestsHandled: 0,
@@ -3110,7 +3116,7 @@ export const useTangManagerStore = create<TangManagerStore>()(
       /** 清晨生成今日要务（排除昨日已完成；写入 todayTasks） */
       generateDailyTasks: (): DailyTask[] => {
         const s = get();
-        const tasks = generateDailyTasksSystem(s.todayTasksCompleted ?? []);
+        const tasks = generateDailyTasksSystem(s.shopType ?? 'jiulou', s.todayTasksCompleted ?? []);
         set({ todayTasks: tasks, todayTasksCompleted: [] });
         return tasks;
       },
@@ -3199,6 +3205,7 @@ export const useTangManagerStore = create<TangManagerStore>()(
             silver: Math.max(0, st.silver + silverDelta),
             reputation: clamp((st.reputation ?? 0) + reputationDelta, 0, 1000),
             tavernBanquetCount: (st.tavernBanquetCount ?? 0) + 1,
+            todayBanquetHosted: (st.todayBanquetHosted ?? 0) + 1,
             eventLog: [...st.eventLog, `banquet-settle:${input.banquetType}:score${input.score}:${st.day}`],
           })
         );
@@ -3215,6 +3222,7 @@ export const useTangManagerStore = create<TangManagerStore>()(
             silver: Math.max(0, st.silver + silverDelta),
             reputation: clamp((st.reputation ?? 0) + reputationDelta, 0, 1000),
             customOrderCount: (st.customOrderCount ?? 0) + 1,
+            todayCustomOrderMade: (st.todayCustomOrderMade ?? 0) + 1,
             eventLog: [...st.eventLog, `fabric-order:match${input.match}:${st.day}`],
           })
         );
@@ -3228,6 +3236,7 @@ export const useTangManagerStore = create<TangManagerStore>()(
         set((st) => ({
           energy: clamp((st.energy ?? 100) - 10, 0, 100),
           dailyEnergyConsumed: (st.dailyEnergyConsumed ?? 0) + 10,
+          todayDiagnosed: (st.todayDiagnosed ?? 0) + 1,
           eventLog: [...st.eventLog, `diagnose:${guestId}:${st.day}`],
         }));
         return { ok: true };
@@ -3248,6 +3257,9 @@ export const useTangManagerStore = create<TangManagerStore>()(
           guestsHandled: guests.filter((g) => g.handled).length,
           guestsTotal: guests.length,
           rejectedGuests: guests.filter((g) => g.review === 'bad').length,
+          banquetHosted: s.todayBanquetHosted ?? 0,
+          diagnosed: s.todayDiagnosed ?? 0,
+          customOrderMade: s.todayCustomOrderMade ?? 0,
         };
         const newly = checkTaskCompletionSystem(s.todayTasks ?? [], track, s.todayTasksCompleted ?? []);
         if (newly.length === 0) {

@@ -21,6 +21,7 @@ import { DialoguePanel } from './tang-manager/dialogue-panel';
 import { DialogueOptionsPanel } from './tang-manager/dialogue-options-panel';
 import { generateDialogueOptions, type AIDialogueOptions } from '@/systems/tang-ai-dialogue';
 import { generateGuestArrival } from '@/systems/tang-ai-dialogue';
+import { SERVICE_INTENT_LABEL } from '@/systems/tang-guest-generator';
 import { PreorderPanel } from './preorder-panel';
 import { StrategySelector } from './strategy-selector';
 import { triggerTutorial } from '@/systems/tang-tutorial-triggers';
@@ -164,6 +165,14 @@ export function ReceptionPanel(): React.ReactElement {
               <p key={i} className="text-xs leading-5" style={{ color: ANCIENT.text }}>· {n}</p>
             ))}
           </div>
+        </div>
+      )}
+
+      {/* 客人服务意图徽标（2026-08-06：看病/抓药、宴席/堂食、定制/成衣） */}
+      {currentGuest?.intent && (
+        <div className="flex items-center gap-2 rounded-xl px-3 py-2" style={{ backgroundColor: ANCIENT.background, border: `1px solid ${ANCIENT.gold}` }}>
+          <span className="text-xs" style={{ color: ANCIENT.secondary }}>本客所求</span>
+          <span className="rounded-full px-3 py-0.5 text-xs font-bold" style={{ backgroundColor: ANCIENT.gold, color: '#FFF' }}>{SERVICE_INTENT_LABEL[currentGuest.intent] ?? currentGuest.intent}</span>
         </div>
       )}
 

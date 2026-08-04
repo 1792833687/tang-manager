@@ -1,6 +1,6 @@
 /**
  * 《我在唐朝当掌柜》新手引导（TANG-TUT-001 模块一）引导 ID 常量
- * 21 个引导 id（用户逐字）：家传手札为载体的新手引导，涵盖
+ * 25 个引导 id（用户逐字）：家传手札为载体的新手引导，涵盖
  * 开局欢迎 / 策略 / 接待 / 通晓人心 / 预购 / 结算 / 货架 / 伙计 / 账本 / 钱庄 /
  * 舆图 / 籴粜契 / 加工 / 陈损 / 回头客 / 周要务 / 债清 / 员工事件 / 沈家预告 /
  * 巍明楼 / 镖队。
@@ -8,7 +8,7 @@
  * 不占手札弹窗（阿昭气泡）。纯数据，不依赖 store；消费方见 store 引导 actions。
  */
 
-/** 21 个引导 id（顺序即产品定义的展示次序） */
+/** 25 个引导 id（顺序即产品定义的展示次序） */
 export type TangTutorialId =
   | 'WELCOME'
   | 'FIRST_STRATEGY'
@@ -30,9 +30,13 @@ export type TangTutorialId =
   | 'FIRST_EMPLOYEE_EVENT'
   | 'FIRST_SHEN_HINT'
   | 'FIRST_POLITICS'
-  | 'FIRST_CARAVAN';
+  | 'FIRST_CARAVAN'
+  | 'FIRST_DEPOSIT' // 里程碑：首次存款
+  | 'FIRST_TRADE' // 里程碑：首次跑商
+  | 'FIRST_SCHEDULE' // 里程碑：首次排班
+  | 'FIRST_HIRE' // 里程碑：首次雇佣伙计
 
-/** 21 个引导 id 全量（有序；文案/测试/UI 迭代共用） */
+/** 25 个引导 id 全量（有序；文案/测试/UI 迭代共用） */
 export const TANG_TUTORIAL_IDS: readonly TangTutorialId[] = [
   'WELCOME',
   'FIRST_STRATEGY',
@@ -55,6 +59,10 @@ export const TANG_TUTORIAL_IDS: readonly TangTutorialId[] = [
   'FIRST_SHEN_HINT',
   'FIRST_POLITICS',
   'FIRST_CARAVAN',
+  'FIRST_DEPOSIT',
+  'FIRST_TRADE',
+  'FIRST_SCHEDULE',
+  'FIRST_HIRE',
 ];
 
 /** 快速查表集合（showTutorial 校验用；避免每次线性扫数组） */

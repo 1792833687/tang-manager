@@ -174,6 +174,7 @@ describe('Step 5b · 货币与金融接线', () => {
     s = useTangManagerStore.getState();
     expect(s.gold).toBe(s.silver);
     expect(s.deposits).toHaveLength(1);
+    expect(useTangManagerStore.getState().currentTutorial).toBe('FIRST_DEPOSIT'); // 首次存款里程碑引导
     store.takeMortgageLoan(50, 'shop');
     s = useTangManagerStore.getState();
     expect(s.gold).toBe(s.silver);
@@ -451,5 +452,28 @@ describe('P1 新接线（购店 / 转政政务闭环）', () => {
     s = useTangManagerStore.getState();
     expect(s.politicsDone).toBe(true);
     expect(s.endingTriggered).toBe('quanqing-chaoye');
+  });
+});
+describe('Step 5b · 里程碑引导接线（首次雇佣/排班）', () => {
+  it('首次雇佣 → FIRST_HIRE；首次排班 → FIRST_SCHEDULE', () => {
+    const store = useTangManagerStore.getState();
+    store.initByDifficulty('B');
+    expect(useTangManagerStore.getState().currentTutorial).toBeNull();
+    const candidate = {
+      id: 'c-milestone',
+      name: '赵铁柱',
+      gender: 'male' as const,
+      type: 'waiter' as const,
+      salary: 6,
+      skills: [],
+      isSpecial: false,
+    };
+    expect(store.hireEmployee(candidate)).toBe(true);
+    expect(useTangManagerStore.getState().currentTutorial).toBe('FIRST_HIRE');
+    useTangManagerStore.getState().markTutorialRead('FIRST_HIRE');
+    const empId = useTangManagerStore.getState().employees[0].id;
+    const res = store.assignShift(empId, 'morning');
+    expect(res).not.toBeNull();
+    expect(useTangManagerStore.getState().currentTutorial).toBe('FIRST_SCHEDULE');
   });
 });

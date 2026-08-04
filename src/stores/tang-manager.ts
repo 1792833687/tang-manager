@@ -1695,6 +1695,7 @@ export const useTangManagerStore = create<TangManagerStore>()(
             deposits: [...(st.deposits ?? []), r.deposit!],
           })
         );
+        get().showTutorial('FIRST_DEPOSIT');
         return r;
       },
 
@@ -2638,6 +2639,7 @@ export const useTangManagerStore = create<TangManagerStore>()(
         if (!res) return null;
         const employees = (s.employees ?? []).map((e) => (e.id === employeeId ? res.employee : e));
         set({ employees });
+        get().showTutorial('FIRST_SCHEDULE');
         return res.employee;
       },
 
@@ -5398,6 +5400,7 @@ export const useTangManagerStore = create<TangManagerStore>()(
             eventLog: [...st.eventLog, `emp-hire:${candidate.name}:${s.day}`],
           })
         );
+        get().showTutorial('FIRST_HIRE');
         return true;
       },
 
@@ -5766,6 +5769,7 @@ export const useTangManagerStore = create<TangManagerStore>()(
         );
         // TANG-MIST-003 M3 · 2.1：买点记今日交易（次日清晨繁荣度 +1~3）
         get().noteNodeTrade(buyNodeId);
+        get().showTutorial('FIRST_TRADE');
         return result;
       },
 

@@ -14,6 +14,9 @@ import { ANCIENT } from '@/theme/tokens';
 
 const SEASON_LABEL: Record<string, string> = { 春: '春', 夏: '夏', 秋: '秋', 冬: '冬' };
 
+/** 门面外观随产业等级（成长可视化）：Lv1 街边 → Lv5 天下第一 */
+const FACADE_ICON: Record<number, string> = { 1: '🛖', 2: '🏮', 3: '🏯', 4: '🏛️', 5: '👑' };
+
 interface Chip {
   label: string;
   value: string;
@@ -37,7 +40,7 @@ export function ShopOverviewStrip(): React.ReactElement | null {
     { label: '声望', value: String(s.reputation), color: ANCIENT.gold, onClick: () => openDetail('声望', ['当前 ' + s.reputation + ' / 1000', '声望影响 NPC 登场、势力关系与官阶（巍明楼需 ≥700）']) },
     { label: '气氛', value: String(s.shopAtmosphere ?? 50), color: ANCIENT.secondary, onClick: () => openDetail('店内气氛', ['当前 ' + (s.shopAtmosphere ?? 50) + ' / 100', '夸奖 +10、投诉 -15；影响客人与情绪传染']) },
     { label: '季节', value: SEASON_LABEL[season] ?? season, color: ANCIENT.border, onClick: () => openDetail('时令', ['当前时令：' + season, '季节影响地图色调与部分事件']) },
-    { label: '产业', value: 'Lv' + lv.level, color: ANCIENT.accent, onClick: goShop },
+    { label: '门面', value: FACADE_ICON[lv.level] + lv.name, color: ANCIENT.accent, onClick: goShop },
     { label: '资产', value: String((s.shopAssets ?? []).length), color: ANCIENT.border, onClick: goShop },
   ];
   return (

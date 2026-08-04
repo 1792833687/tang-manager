@@ -1,14 +1,14 @@
 /**
- * 新手引导（TANG-TUT-001 模块一）验收测试 — 引导状态存储 + 21 条手札文案
+ * 新手引导（TANG-TUT-001 模块一）验收测试 — 引导状态存储 + 25 条手札文案
  *
  * 覆盖（需求方逐字）：
- * 1. tutorialFlags 默认全 false（初始空对象；21 个 id 均未读）
+ * 1. tutorialFlags 默认全 false（初始空对象；25 个 id 均未读）
  * 2. showTutorial：合法 id 弹当前引导 / 未知 id 忽略 / 已读忽略（防重复）
  * 3. markTutorialRead：标记已读；若为当前引导同时关闭 currentTutorial
  * 4. dismissTutorial：关闭当前引导但不标已读（可再次弹出）
  * 5. resetAllTutorials：全部重置
- * 6. 文案完整性：21 条逐字 id 与 TANG_TUTORIAL_IDS 一致；title/body 非空
- * 7. 文案 kind：仅 first_expiry 为 azhao（阿昭气泡），其余 20 条 handbook（家传手札）
+ * 6. 文案完整性：25 条逐字 id 与 TANG_TUTORIAL_IDS 一致；title/body 非空
+ * 7. 文案 kind：仅 first_expiry 为 azhao（阿昭气泡），其余 24 条 handbook（家传手札）
  * 8. 持久化白名单：partialize 含 tutorialFlags/currentTutorial（persist v16）
  */
 import { beforeEach, describe, expect, it } from 'vitest';
@@ -31,13 +31,13 @@ beforeEach(() => {
 });
 
 describe('TANG-TUT-001 · 引导状态默认值', () => {
-  it('tutorialFlags 初始为空对象（21 个引导 id 全部默认未读 false）', () => {
+  it('tutorialFlags 初始为空对象（25 个引导 id 全部默认未读 false）', () => {
     const s = useTangManagerStore.getState();
     expect(s.tutorialFlags).toEqual({});
     for (const id of TANG_TUTORIAL_IDS) {
       expect(s.tutorialFlags[id]).toBeUndefined(); // 未读 = 无 true 标记
     }
-    expect(TANG_TUTORIAL_IDS).toHaveLength(21);
+    expect(TANG_TUTORIAL_IDS).toHaveLength(25);
   });
 
   it('currentTutorial 初始为 null（无当前引导）', () => {
@@ -107,9 +107,9 @@ describe('TANG-TUT-001 · markTutorialRead / dismissTutorial', () => {
   });
 });
 
-describe('TANG-TUT-001 · 文案完整性（21 条逐字）', () => {
-  it('TANG_TUTORIAL_CONTENT 覆盖全部 21 个 id（Record 键完整）', () => {
-    expect(Object.keys(TANG_TUTORIAL_CONTENT)).toHaveLength(21);
+describe('TANG-TUT-001 · 文案完整性（25 条逐字）', () => {
+  it('TANG_TUTORIAL_CONTENT 覆盖全部 25 个 id（Record 键完整）', () => {
+    expect(Object.keys(TANG_TUTORIAL_CONTENT)).toHaveLength(25);
     for (const id of TANG_TUTORIAL_IDS) {
       expect(TANG_TUTORIAL_CONTENT[id]).toBeDefined();
     }
@@ -128,7 +128,7 @@ describe('TANG-TUT-001 · 文案完整性（21 条逐字）', () => {
     }
   });
 
-  it('kind 规则：仅 first_expiry 为 azhao（阿昭气泡），其余 20 条为 handbook（家传手札）', () => {
+  it('kind 规则：仅 first_expiry 为 azhao（阿昭气泡），其余 24 条为 handbook（家传手札）', () => {
     for (const c of TANG_TUTORIAL_CONTENT_LIST) {
       if (c.id === 'FIRST_EXPIRY') {
         expect(c.kind).toBe('azhao');
@@ -191,8 +191,8 @@ describe('TANG-TUT-001 · 与既有系统并存 + ID 守卫', () => {
     expect(after.fogOfWar).toBeDefined();
   });
 
-  it('isTangTutorialId 守卫：21 个合法 id 通过，其余拒绝', () => {
-    expect(TANG_TUTORIAL_ID_SET.size).toBe(21);
+  it('isTangTutorialId 守卫：25 个合法 id 通过，其余拒绝', () => {
+    expect(TANG_TUTORIAL_ID_SET.size).toBe(25);
     for (const id of TANG_TUTORIAL_IDS) {
       expect(isTangTutorialId(id)).toBe(true);
     }
@@ -201,7 +201,7 @@ describe('TANG-TUT-001 · 与既有系统并存 + ID 守卫', () => {
     expect(isTangTutorialId('WELCOME ')).toBe(false);
   });
 
-  it('ID 全集逐字（顺序不可变）：21 个 id 与用户 2.1 一致', () => {
+  it('ID 全集逐字（顺序不可变）：25 个 id 与用户 2.1 一致', () => {
     expect(TANG_TUTORIAL_IDS).toEqual([
       'WELCOME',
       'FIRST_STRATEGY',
@@ -224,6 +224,27 @@ describe('TANG-TUT-001 · 与既有系统并存 + ID 守卫', () => {
       'FIRST_SHEN_HINT',
       'FIRST_POLITICS',
       'FIRST_CARAVAN',
+      'FIRST_DEPOSIT',
+      'FIRST_TRADE',
+      'FIRST_SCHEDULE',
+      'FIRST_HIRE',
     ] satisfies TangTutorialId[]);
+  });
+});
+describe('TANG-TUT-001 · 里程碑引导（首次存款/跑商/排班/雇佣）', () => {
+  it('四个里程碑 id 合法、文案完备、均为 handbook（非重要可遮罩关闭）', () => {
+    const milestoneIds = ['FIRST_DEPOSIT', 'FIRST_TRADE', 'FIRST_SCHEDULE', 'FIRST_HIRE'] as const;
+    for (const id of milestoneIds) {
+      expect(isTangTutorialId(id)).toBe(true);
+      expect(TANG_TUTORIAL_CONTENT[id]).toBeDefined();
+      expect(TANG_TUTORIAL_CONTENT[id].body.trim().length).toBeGreaterThan(0);
+      expect(TANG_TUTORIAL_CONTENT[id].kind).toBe('handbook');
+    }
+  });
+
+  it('里程碑文案逐字抽查：不含现代词汇（攻略/教程/提示等）', () => {
+    for (const id of ['FIRST_DEPOSIT', 'FIRST_TRADE', 'FIRST_SCHEDULE', 'FIRST_HIRE'] as const) {
+      expect(TANG_TUTORIAL_CONTENT[id].body).not.toMatch(/攻略|教程|新手|提示|功能|按钮|点击|玩家/);
+    }
   });
 });

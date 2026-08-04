@@ -1,6 +1,6 @@
 /**
  * 《我在唐朝当掌柜》新手引导（TANG-TUT-001 模块一）手札文案内容
- * 21 条文案：以「家传手札」为载体的祖辈家书，亲切但有长辈分寸，不用现代词汇；
+ * 25 条文案：以「家传手札」为载体的祖辈家书，亲切但有长辈分寸，不用现代词汇；
  * 仅 first_expiry 一条不走手札弹窗——以阿昭气泡呈现（kind='azhao'），其余全部
  * kind='handbook'（家传手札弹窗，title 统一「家传手札」）。
  * 纯数据，不依赖 store；触发时机与接线由 systems/store 侧实现（T2 起）。
@@ -22,7 +22,7 @@ export interface TangTutorialContent {
   kind: TangTutorialKind;
 }
 
-/** 21 条手札文案全量（key=引导 id；Record 保证 21 键齐全，缺一条即编译报错） */
+/** 25 条手札文案全量（key=引导 id；Record 保证 25 键齐全，缺一条即编译报错） */
 export const TANG_TUTORIAL_CONTENT: Record<TangTutorialId, TangTutorialContent> = {
   WELCOME: {
     id: 'WELCOME',
@@ -171,9 +171,37 @@ export const TANG_TUTORIAL_CONTENT: Record<TangTutorialId, TangTutorialContent> 
     body:
       '镖队一成，货物便可走远路，不再困守一坊。行前须定路线——哪条道近，哪条道稳，各有讲究；道上的绿通关卡，打点好了，一路通畅。骡车虽慢，胜在稳当；马队虽快，却招眼。头一趟，宁可慢些，也别折了本钱。',
   },
+  FIRST_DEPOSIT: {
+    id: 'FIRST_DEPOSIT',
+    title: '家传手札',
+    kind: 'handbook',
+    body:
+      '银钱放在手边，终是不稳。钱庄可存可贷——存款月息半厘，聊胜于无；急用银子时，抵押借贷、高利贷也能救急，只是利钱不轻。手头宽裕时存上一笔，也算给家业添个底。',
+  },
+  FIRST_TRADE: {
+    id: 'FIRST_TRADE',
+    title: '家传手札',
+    kind: 'handbook',
+    body:
+      '跑商一道，贱买贵卖，赚的是路程与眼力。选好买点、卖点与货色，看准商路与绿通，骡马驮着货走一遭，回来自有进账。头一趟不必贪多，探探路数要紧。',
+  },
+  FIRST_SCHEDULE: {
+    id: 'FIRST_SCHEDULE',
+    title: '家传手札',
+    kind: 'handbook',
+    body:
+      '伙计轮值，早班晚班各有其宜。排班得当，店里昼夜都有人手；安排不周，过劳的伙计迟早要闹脾气。莫让一人连轴转，休沐之日该休则休。',
+  },
+  FIRST_HIRE: {
+    id: 'FIRST_HIRE',
+    title: '家传手札',
+    kind: 'handbook',
+    body:
+      '阿昭一人终究分身乏术。雇上一位称手的伙计，货架有人理、灶上有人忙，接待客人也从容些。月钱虽是一笔开销，可人手齐了，生意才做得开。',
+  },
 };
 
-/** 21 条文案列表（严格按 TANG_TUTORIAL_IDS 顺序；遍历/渲染共用，保证与 id 顺序一致） */
+/** 25 条文案列表（严格按 TANG_TUTORIAL_IDS 顺序；遍历/渲染共用，保证与 id 顺序一致） */
 export const TANG_TUTORIAL_CONTENT_LIST: readonly TangTutorialContent[] = TANG_TUTORIAL_IDS.map(
   (id) => TANG_TUTORIAL_CONTENT[id]
 );

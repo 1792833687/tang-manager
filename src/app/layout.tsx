@@ -9,9 +9,16 @@
  * 采用「Google Fonts 家族名优先 + 系统字体回退」声明栈（ANCIENT_FONT），
  * 经 CSS 变量注入 :root；运行时零外网请求，与项目离线优先策略一致。
  */
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import { ANCIENT, ANCIENT_FONT, ANCIENT_FONT_VAR } from '@/theme/tokens';
+
+/** 移动端 viewport：viewport-fit=cover 启用安全区（刘海屏/底部 home indicator 避让） */
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  viewportFit: 'cover',
+};
 
 export const metadata: Metadata = {
   title: '我在唐朝当掌柜',

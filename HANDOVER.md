@@ -326,3 +326,13 @@ tsc 零错误 → 全量 **1142 用例全绿（92 文件）** → build 静态�
 4. store：新增 todayBanquetHosted/todayDiagnosed/todayCustomOrderMade 追踪字段 + 判定接线。
 
 验收：tsc 零错误 → 全量 1182 用例全绿（96 文件，+2 产业要务用例）→ build 静态导出成功 → Playwright：药铺「本客所求·按方抓药」徽标、快捷钱庄点击弹「尚未解锁：第 5 日起，钱庄开门」且不跳转，0 控制台错误。
+
+---
+
+## 移动端 UI 适配（2026-08-07）
+
+1. viewport-fit=cover：layout.tsx 新增 export const viewport（width=device-width / initialScale=1 / viewportFit=cover），刘海屏与底部 home indicator 安全区正式生效（此前 env(safe-area-inset-bottom) 恒为 0）。
+2. 根容器顶部安全区 + 底部留白加大：main pb-20 → pb-24（48px 底导航 + 安全区不遮挡内容），根容器 paddingTop=env(safe-area-inset-top)。
+3. 概览条移动端适配：chips 行 flex-nowrap + overflow-x-auto（一行横滑，不再换行堆高），chip 加 whitespace-nowrap（修门面 emoji 换行使行高 86px 的问题）；移动端概览条高度 104px → 56px。
+
+验收：tsc 零错误 → 全量 1182 用例全绿（96 文件）→ build 静态导出成功 → Playwright 移动视口（390×844 / 375×667）：无水平溢出、底部导航就位、概览条单行 56px、接待面板/经营面板可操作、弹窗不超视口，0 控制台错误。

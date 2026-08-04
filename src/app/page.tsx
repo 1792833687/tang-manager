@@ -333,12 +333,12 @@ export default function TangManagerPage(): React.ReactElement {
       {mounted && (
         <div
           className="tang-root flex min-h-screen flex-col"
-          style={{ backgroundColor: ANCIENT.background, color: ANCIENT.text }}
+          style={{ backgroundColor: ANCIENT.background, color: ANCIENT.text, paddingTop: 'env(safe-area-inset-top, 0px)' }}
         >
           <div className="flex flex-1">
             <NavSidebar active={activePanel} onSelect={handleSelect} disabled={phase !== 'playing'} />
             {/* pb-20 为移动端底部 Tab 预留留白；md+ 桌面侧栏布局恢复 pb-4 */}
-            <main className="flex flex-1 flex-col gap-4 p-4 pb-20 md:pb-4">
+            <main className="flex flex-1 flex-col gap-4 p-4 pb-24 md:pb-4">
       <StaffReminderHost />
               <SceneBanner />
               {phase === 'identity' && <IdentityPanel />}

@@ -45,9 +45,9 @@ export function ShopOverviewStrip(): React.ReactElement | null {
   ];
   return (
     <div className="flex flex-col gap-2">
-      <div className="sticky top-0 z-30 flex flex-wrap items-center gap-2 rounded-xl px-3 py-2" style={{ backgroundColor: ANCIENT.background, border: `1px solid ${ANCIENT.border}`, boxShadow: '0 2px 8px rgba(60,40,20,0.12)' }}>
+      <div className="sticky top-0 z-30 flex flex-nowrap items-center gap-2 overflow-x-auto rounded-xl px-3 py-2 md:flex-wrap md:overflow-visible" style={{ backgroundColor: ANCIENT.background, border: `1px solid ${ANCIENT.border}`, boxShadow: '0 2px 8px rgba(60,40,20,0.12)', scrollbarWidth: 'none' }}>
         {chips.map((c) => (
-          <button key={c.label} type="button" onClick={c.onClick} title="点击查看详情" className="flex items-center gap-1 rounded px-2 py-0.5 text-xs transition-transform active:scale-[0.96]" style={{ backgroundColor: ANCIENT.card, color: c.color, border: `1px solid ${ANCIENT.border}` }}>
+          <button key={c.label} type="button" onClick={c.onClick} title="点击查看详情" className="flex shrink-0 items-center gap-1 whitespace-nowrap rounded px-2 py-0.5 text-xs transition-transform active:scale-[0.96]" style={{ backgroundColor: ANCIENT.card, color: c.color, border: `1px solid ${ANCIENT.border}` }}>
             <span style={{ color: ANCIENT.secondary }}>{c.label}</span>
             <b>{c.value}</b>
           </button>

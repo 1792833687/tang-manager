@@ -32,9 +32,10 @@ const IRON_ORDER: NavItemKey[] = [
 ];
 
 describe('TANG-POLISH-001 模块一：导航顺序铁律', () => {
-  it('NAV_ITEMS 应为 12 项且与甲方铁律顺序完全一致', () => {
-    expect(NAV_ITEMS).toHaveLength(12);
-    expect(NAV_ITEMS.map((item) => item.key)).toEqual(IRON_ORDER);
+  it('NAV_ITEMS 前 12 项与甲方铁律顺序完全一致，第 13 项为店铺管理（2026-08-05 扩展）', () => {
+    expect(NAV_ITEMS.length).toBe(13);
+    expect(NAV_ITEMS.slice(0, 12).map((item) => item.key)).toEqual(IRON_ORDER);
+    expect(NAV_ITEMS[12]!.key).toBe('shop');
   });
 
   it('NAV_ITEMS 的 key 唯一（无重复面板）', () => {
@@ -98,10 +99,11 @@ describe('TANG-POLISH-001 模块一：条件解锁', () => {
     expect(isNavItemUnlocked('caravan', { ...baseState, shopCount: 2, unlockedLayers: ['east_west_market'] })).toBe(true);
   });
 
-  it('其余 10 面板恒显示', () => {
+  it('其余面板恒显示（含店铺管理 shop）', () => {
     for (const key of IRON_ORDER) {
       if (key === 'politics' || key === 'caravan') continue;
       expect(isNavItemUnlocked(key, baseState)).toBe(true);
     }
+    expect(isNavItemUnlocked('shop', baseState)).toBe(true);
   });
 });

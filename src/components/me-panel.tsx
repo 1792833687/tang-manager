@@ -12,7 +12,6 @@ import { AGE_LABELS, AZHAO_PLAYING_LINE, reputationTitle } from '@/config/tang-n
 import { shopDisplayName } from '@/config/tang-shop-types';
 import { useTangManagerStore } from '@/stores/tang-manager';
 import { loadTangAiConfig } from '@/systems/tang-api-test';
-import { estimateShopValue } from '@/systems/tang-shop-sale';
 import { BUSINESS_STRATEGY_LABEL } from '@/systems/tang-business-strategy';
 import { ANCIENT } from '@/theme/tokens';
 import { withBase } from '@/lib/utils/base-path';
@@ -20,11 +19,8 @@ import { formatMoney } from '@/lib/format-money';
 import { AncientCard } from './ancient-card';
 import { ApiConfigModal } from './api-config-modal';
 import { CreditPanel } from './credit-panel';
-import { BusinessStrategySelector } from './business-strategy-selector';
 import { DangerConfirm } from './danger-confirm';
 import { pushActionFeedback } from './action-feedback';
-import { SHOP_ASSETS } from '@/config/tang-shop-assets';
-import { IndustryPanel } from './tang-manager/industry-panel';
 
 /** 分店序名（天干；shopCount-1 家分店依次命名） */
 const BRANCH_LABELS = ['甲', '乙', '丙', '丁', '戊', '己', '庚', '辛', '壬', '癸'] as const;
@@ -97,17 +93,6 @@ export function MePanel(): React.ReactElement {
     return () => { cancelled = true; };
   }, [tianjiOpen]);
 
-  // 内容深化 TANG-CONT-B 模块一：变卖分店二次确认（null 关闭）
-  const [sellOpen, setSellOpen] = useState(false);
-  // P1（2026-08-05）：购置分店（方案 A：第一家 800 两，逐店递增）
-  const [buyOpen, setBuyOpen] = useState(false);
-  const branchCost = 800 * Math.max(1, (state.shopCount ?? 1));
-  const handleBuyBranch = (): void => {
-    const res = state.purchaseBranch();
-    pushActionFeedback(res.ok ? '新店开张' : (res.reason ?? '购置失败'), res.ok ? 'success' : 'warning');
-  };
-  const branchCount = Math.max(0, (state.shopCount ?? 1) - 1);
-  const branchValuation = estimateShopValue();
   const strategy = state.businessStrategy ?? 'steady';
 
   // 新手引导（TANG-TUT-002）：重置入口「重读家传手札」（确认后 resetAllTutorials）
@@ -123,22 +108,9 @@ export function MePanel(): React.ReactElement {
     pushActionFeedback('家传手札已重置，重新研读', 'success');
   };
 
-  const handleSellConfirm = (): void => {
-    const res = state.sellShop();
-    if (res.ok) {
-      pushActionFeedback('变卖完成', 'success');
-      if ((res.laidOffNames ?? []).length > 0) {
-        pushActionFeedback(`伙计${res.laidOffNames!.join('、')}已离店`, 'warning');
-      }
-    } else {
-      pushActionFeedback(res.reason ?? '变卖失败', 'warning');
-    }
-    setSellOpen(false);
-  };
 
   return (
     <div className="grid gap-3 lg:grid-cols-3">
-      <IndustryPanel />
       <AncientCard className="lg:col-span-2" title="我">
         <div className="flex flex-col gap-3">
           <div className="flex flex-wrap items-baseline justify-between gap-2">
@@ -213,98 +185,6 @@ export function MePanel(): React.ReactElement {
         <p className="mt-3 text-xs leading-relaxed" style={{ color: ANCIENT.secondary }}>{AZHAO_PLAYING_LINE}</p>
       </AncientCard>
 
-      {/* 店铺 · 家业（内容深化 TANG-CONT-B 模块一）：主店 + 分店卡片 + 经营策略 */}
-      <AncientCard accent={ANCIENT.gold} className="lg:col-span-3" title="店铺 · 家业">
-        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-          {/* 祖传老店：不可变卖 */}
-          <div className="rounded-lg px-3 py-2" style={{ backgroundColor: ANCIENT.card, border: `1px solid ${ANCIENT.gold}` }}>
-            <div className="flex items-center justify-between text-sm">
-              <span className="font-bold tracking-widest" style={{ color: ANCIENT.text }}>祖传老店</span>
-              <span className="rounded px-1.5 py-0.5 text-[10px] text-white" style={{ backgroundColor: ANCIENT.gold }}>本店</span>
-            </div>
-            <p className="mt-1 text-[11px] leading-relaxed" style={{ color: ANCIENT.secondary }}>
-              长安东市 · 永乐坊。你祖上传下来的铺面，是立足之本。
-            </p>
-            <p className="mt-1.5 text-[10px] tracking-widest" style={{ color: ANCIENT.border }}>
-              此乃祖传老店，不可变卖
-            </p>
-          </div>
-          {/* 分店（抽象计数：每张卡代表一家分店，变卖一家 → shopCount -1） */}
-          {branchCount > 0 &&
-            Array.from({ length: branchCount }, (_, i) => (
-              <div key={i} className="rounded-lg px-3 py-2" style={{ backgroundColor: ANCIENT.background, border: `1px solid ${ANCIENT.border}` }}>
-                <div className="flex items-center justify-between text-sm">
-                  <span className="font-bold tracking-widest" style={{ color: ANCIENT.text }}>
-                    分店 · {BRANCH_LABELS[i] ?? `${i + 1}号`}
-                  </span>
-                  <span className="rounded px-1.5 py-0.5 text-[10px] text-white" style={{ backgroundColor: ANCIENT.secondary }}>分号</span>
-                </div>
-                <p className="mt-1 text-[11px] leading-relaxed" style={{ color: ANCIENT.secondary }}>
-                  估值约 {formatMoney(branchValuation)} 两（累计投入×七成）。变卖后此店不复存在。
-                </p>
-                <button
-                  type="button"
-                  onClick={() => setSellOpen(true)}
-                  className="mt-1.5 rounded px-2.5 py-1 text-[10px] tracking-widest text-white transition-opacity hover:opacity-90"
-                  style={{ backgroundColor: ANCIENT.accent }}
-                >
-                  变卖
-                </button>
-              </div>
-            ))}
-        </div>
-        <button
-          type="button"
-          onClick={() => setBuyOpen(true)}
-          disabled={state.silver < branchCost}
-          className="mt-2 w-full rounded-lg px-3 py-2 text-xs font-bold tracking-widest transition-transform active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-40"
-          style={{ backgroundColor: ANCIENT.primary, color: '#FFFFFF' }}
-        >
-          购置分店（{formatMoney(branchCost)} 两，可雇佣伙计 +2）
-        </button>
-        {/* 店铺配置 · 资产（2026-08-05 体验优化：购置物件带来效果与功能） */}
-        <div className="mt-3 border-t pt-2" style={{ borderColor: ANCIENT.border }}>
-          <div className="mb-1 text-xs font-bold tracking-widest" style={{ color: ANCIENT.secondary }}>店铺配置 · 资产（{formatMoney(state.silver)} 两）</div>
-          <div className="flex max-h-48 flex-col gap-1.5 overflow-y-auto">
-            {SHOP_ASSETS.map((a) => {
-              const owned = (state.shopAssets ?? []).includes(a.id);
-              const afford = state.silver >= a.price;
-              return (
-                <div key={a.id} className="rounded-lg px-2.5 py-1.5" style={{ backgroundColor: owned ? '#F0E6D2' : ANCIENT.background, border: `1px solid ${owned ? ANCIENT.gold : ANCIENT.border}` }}>
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="font-bold" style={{ color: ANCIENT.text }}>{a.name}</span>
-                    <span className="text-[11px]" style={{ color: ANCIENT.secondary }}>{formatMoney(a.price)} 两</span>
-                  </div>
-                  <p className="mt-0.5 text-[11px] leading-4" style={{ color: ANCIENT.secondary }}>{a.desc}</p>
-                  <div className="mt-1 flex items-center justify-between">
-                    <span className="text-[10px]" style={{ color: ANCIENT.gold }}>{a.feature}</span>
-                    {owned ? (
-                      <span className="text-[10px] font-bold" style={{ color: ANCIENT.primary }}>已购置</span>
-                    ) : (
-                      <button
-                        type="button"
-                        disabled={!afford}
-                        onClick={() => {
-                          const res = state.purchaseShopAsset(a.id);
-                          pushActionFeedback(res.ok ? '已购置「' + a.name + '」' : (res.reason ?? '购置失败'), res.ok ? 'success' : 'warning');
-                        }}
-                        className="rounded px-2 py-0.5 text-[10px] font-bold tracking-widest text-white disabled:cursor-not-allowed disabled:opacity-40"
-                        style={{ backgroundColor: afford ? ANCIENT.primary : ANCIENT.border }}
-                      >
-                        购置
-                      </button>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-        {/* 经营策略（内容深化 TANG-CONT-B 模块六·1）：薄利多销/奇货可居/稳健经营 */}
-        <div className="mt-3 border-t pt-2" style={{ borderColor: ANCIENT.border }}>
-          <BusinessStrategySelector />
-        </div>
-      </AncientCard>
 
       <CreditPanel />
       <ApiConfigModal open={tianjiOpen} onClose={() => setTianjiOpen(false)} />
@@ -330,26 +210,6 @@ export function MePanel(): React.ReactElement {
         </button>
       </div>
 
-      {/* 购置分店确认（P1；DangerConfirm 复用） */}
-      {buyOpen && (
-        <DangerConfirm
-          title="购置分店"
-          risk={`耗银 ${formatMoney(branchCost)} 两另置一铺，伙计名额 +2（可雇佣上限提升）。是否继续？`}
-          confirmLabel={`购置（${formatMoney(branchCost)} 两）`}
-          onConfirm={() => { handleBuyBranch(); setBuyOpen(false); }}
-          onClose={() => setBuyOpen(false)}
-        />
-      )}
-      {/* 变卖分店二次确认（内容深化 TANG-CONT-B 模块一；DangerConfirm 复用） */}
-      {sellOpen && (
-        <DangerConfirm
-          title="变卖分店"
-          risk={`店铺估值约${formatMoney(branchValuation)}两（累计投入×七成）。变卖后此店不复存在，店内伙计需逐一遣散或调往他店。是否继续？`}
-          confirmLabel="确认变卖"
-          onConfirm={handleSellConfirm}
-          onClose={() => setSellOpen(false)}
-        />
-      )}
 
       {/* 重读家传手札确认（新手引导；DangerConfirm 复用） */}
       {resetTutorialOpen && (

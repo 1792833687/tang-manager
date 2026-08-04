@@ -36,6 +36,7 @@ import { StoryModal } from '@/components/tang-manager/story-modal';
 import { StaffReminderHost } from '@/components/tang-manager/staff-reminder-host';
 import { ShopOverviewStrip } from '@/components/shop-overview-strip';
 import { SettlementSummaryModal } from '@/components/settlement-summary-modal';
+import { ShopManagePanel } from '@/components/shop-manage-panel';
 import { GameErrorBoundary } from '@/components/game-error-boundary';
 import { EventPanel } from '@/components/event-panel';
 import { FactionPanel } from '@/components/faction-panel';
@@ -132,6 +133,7 @@ const PANEL_TITLES: Record<NavItemKey, string> = {
   politics: '巍明楼',
   journal: '手札录',
   achievement: '成就',
+  shop: '店铺管理',
 };
 
 /** 面板内容表（dashboard 看板只渲染当前面板；12 面板全部主内容区切面） */
@@ -148,6 +150,7 @@ const PANEL_CONTENT: Record<NavItemKey, React.ReactElement> = {
   politics: <PoliticsPanel />,
   journal: <JournalPanel />,
   achievement: <AchievementPanel />,
+  shop: <ShopManagePanel />,
 };
 
 /** 精简状态条（operations 视图顶部）：当前客人进度 + 精力 + 通晓人心剩余 + 天机阁入口 */

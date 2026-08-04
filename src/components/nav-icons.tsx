@@ -8,7 +8,7 @@
 import { CoinIcon } from './coin-icon';
 import { MapIcon } from './map-icon';
 
-export type NavIconKey = 'me' | 'ledger' | 'shelf' | 'staff' | 'reception' | 'achievement' | 'bank' | 'map' | 'faction' | 'journal' | 'politics' | 'caravan';
+export type NavIconKey = 'me' | 'ledger' | 'shelf' | 'staff' | 'reception' | 'achievement' | 'bank' | 'map' | 'faction' | 'journal' | 'politics' | 'caravan' | 'shop';
 
 interface StrokeIconProps {
   size?: number;
@@ -135,6 +135,18 @@ function CaravanIcon({ size = 22, color = '#8B6F47' }: StrokeIconProps): React.R
   );
 }
 
+/** 店铺管理（铺面 + 旗幌） */
+function ShopIcon({ size = 22, color = '#8B6F47' }: StrokeIconProps): React.ReactElement {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M4 9.5l1-4h14l1 4" />
+      <path d="M5 9.5v10h14v-10" />
+      <path d="M9 19.5v-5h6v5" />
+      <path d="M4 9.5h16" />
+    </svg>
+  );
+}
+
 /** 统一导航图标入口（按 iconKey 分发） */
 export function NavIcon({
   iconKey,
@@ -168,6 +180,8 @@ export function NavIcon({
       return <ReceptionIcon size={size} color={color} />;
     case 'achievement':
       return <AchievementIcon size={size} color={color} />;
+    case 'shop':
+      return <ShopIcon size={size} color={color} />;
     case 'me':
     default:
       return <MeIcon size={size} color={color} />;

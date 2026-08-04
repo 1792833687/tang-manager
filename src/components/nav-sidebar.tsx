@@ -28,7 +28,7 @@ export type NavPanelKey =
   | 'map';
 
 /** 导航项 key：8 面板 + 门路/手札录/镖队/巍明楼（第 9-12 项；v1.0 全部主内容区切面） */
-export type NavItemKey = NavPanelKey | 'faction' | 'journal' | 'politics' | 'caravan';
+export type NavItemKey = NavPanelKey | 'faction' | 'journal' | 'politics' | 'caravan' | 'shop';
 
 /** 导航项（甲方铁律顺序，与快捷键 1-12 严格对应）：label 全名（tooltip/底部短名 short） */
 export const NAV_ITEMS: ReadonlyArray<{ key: NavItemKey; label: string; short: string; iconKey: NavIconKey }> = [
@@ -44,6 +44,7 @@ export const NAV_ITEMS: ReadonlyArray<{ key: NavItemKey; label: string; short: s
   { key: 'politics', label: '巍明楼', short: '巍明', iconKey: 'politics' },
   { key: 'journal', label: '手札录', short: '手札', iconKey: 'journal' },
   { key: 'achievement', label: '成就', short: '成就', iconKey: 'achievement' },
+{ key: 'shop', label: '店铺管理', short: '店铺', iconKey: 'shop' },
 ];
 
 /** 条件解锁所需状态子集（nav-sidebar / mobile-bottom-tab 复用） */

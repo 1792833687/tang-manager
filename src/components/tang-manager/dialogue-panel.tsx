@@ -193,11 +193,13 @@ export function DialoguePanel({ guest }: { guest: Guest }): React.ReactElement {
     setState(d);
     const fallback = pickTemplate(OPENING_LINES[shopType]);
     setTyped(fallback);
+    // 修重复：开场白先入 history（模板兜底），AI 成功时替换最后一条内容
+    setState((prev) => (prev ? pushDialogueMessage(prev, { role: 'guest', content: fallback, source: 'template', phase: 'greeting' }) : prev));
     generateGuestGreeting(guest, shopType)
       .then((text) => {
         if (cancelled || !text || text === fallback) return;
         setTyped(text);
-        setState((prev) => (prev ? pushDialogueMessage({ ...prev, history: prev.history.filter((m) => !(m.phase === 'greeting' && m.role === 'guest')) }, { role: 'guest', content: text, source: 'ai', phase: 'greeting' }) : prev));
+        setState((prev) => (prev ? { ...prev, history: prev.history.map((m, i) => (i === prev.history.length - 1 && m.role === 'guest' ? { ...m, content: text, source: 'ai' } : m)) } : prev));
       })
       .catch(() => undefined);
     return () => {
@@ -361,15 +363,11 @@ export function DialoguePanel({ guest }: { guest: Guest }): React.ReactElement {
 
       {/* 中部对话区 */}
       <div className="max-h-64 space-y-2 overflow-y-auto rounded-xl p-3" style={{ backgroundColor: ANCIENT.card, border: `1px solid ${ANCIENT.border}` }}>
-        {history.map((m, i) => (
-          <Bubble key={i} role={m.role} content={m.content} source={m.source} />
-        ))}
-        {phase === 'greeting' && typed && (
-          <Bubble role="guest" content={typingDone ? typed : typedOut} />
-        )}
-        {phase === 'guest_reply' && typed && (
-          <Bubble role="guest" content={typingDone ? typed : typedOut} />
-        )}
+        {history.map((m, i) => {
+          const isLast = i === history.length - 1;
+          const typing = isLast && m.role === 'guest' && typed.length > 0 && !typingDone;
+          return <Bubble key={i} role={m.role} content={typing ? typedOut : m.content} source={m.source} />;
+        })}
         {busy && <div className="text-xs" style={{ color: ANCIENT.secondary }}>（客人正在斟酌……）</div>}
       </div>
 

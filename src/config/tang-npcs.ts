@@ -37,7 +37,7 @@ export const TANG_NPCS: readonly GameNPCConfig[] = [
     location: '平康坊 · 醉太平',
     portrait: `${NPC_PORTRAIT_DIR}/su-daniang.svg`,
     unlockHint: '声望 ≥ 400，或首探平康坊（与平康坊势力有往来）',
-    locationNode: null, // 平康坊无地图节点（地图图标不渲染；详情弹窗仍展示常驻地点）
+    locationNode: 'pingkangfang', // K10 修复（2026-08-06）：平康坊已补地图节点，苏大娘渲染于舆图
     personality: '泼辣爽利，见人说人话，见鬼说鬼话，极重眼力。',
     speakingStyle: '一口京片子，爱打趣，话里半真半假，句句都藏着生意经。',
     background:
@@ -189,7 +189,7 @@ export const TANG_NPCS: readonly GameNPCConfig[] = [
     location: '平康坊（赎身后在店帮忙）',
     portrait: `${NPC_PORTRAIT_DIR}/a-ying.svg`,
     unlockHint: '阿昭好感 ≥ 60 暗示 → ≥ 80 明确 → 支付 100 两赎人',
-    locationNode: null, // 平康坊无地图节点；赎身后 location 指向陆记老店（店门口）
+    locationNode: 'pingkangfang', // K10 修复（2026-08-06）：平康坊已补地图节点（原注：赎身后 location 指向陆记老店）
     personality: '怯生生又倔强，怕生，但认准了人便死心塌地。',
     speakingStyle: '声音细软，说话前总先看一眼阿昭；一提起家事，便低下头不作声。',
     background:

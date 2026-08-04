@@ -14,6 +14,7 @@ import { useTangManagerStore } from '@/stores/tang-manager';
 import { ANCIENT } from '@/theme/tokens';
 import { AncientCard } from './ancient-card';
 import { ClueWallPanel } from './clue-wall-panel';
+import { TasksQuestsPanel } from './tasks-quests-panel';
 import { ModalContainer } from './modal-container';
 import { JOURNAL_TYPE_LABEL, type JournalEntry, type JournalEntryType } from '@/types/tang-journal';
 
@@ -95,6 +96,7 @@ function typeColorFor(type: JournalEntryType): string {
 export function JournalPanel(): React.ReactElement {
   const journal = useTangManagerStore((s) => s.journal ?? []);
   const [cluesOpen, setCluesOpen] = useState(false);
+  const [questsOpen, setQuestsOpen] = useState(false);
   const [filter, setFilter] = useState<JournalFilter>('all');
   const [page, setPage] = useState(0);
 
@@ -134,6 +136,18 @@ export function JournalPanel(): React.ReactElement {
           }}
         >
           蛛丝马迹
+        </button>
+        <button
+          type="button"
+          onClick={() => setQuestsOpen(true)}
+          className="rounded px-3 py-1 text-xs tracking-[0.3em]"
+          style={{
+            backgroundColor: ANCIENT.gold,
+            color: '#FFFFFF',
+            border: `1px solid ${ANCIENT.gold}`,
+          }}
+        >
+          要务与遗命
         </button>
       </div>
 
@@ -214,6 +228,11 @@ export function JournalPanel(): React.ReactElement {
       {cluesOpen && (
         <ModalContainer title="蛛丝马迹 · 长安暗流" onClose={() => setCluesOpen(false)} showConfirm={false}>
           <ClueWallPanel />
+        </ModalContainer>
+      )}
+      {questsOpen && (
+        <ModalContainer title="要务与遗命" onClose={() => setQuestsOpen(false)} showConfirm={false}>
+          <TasksQuestsPanel />
         </ModalContainer>
       )}
     </AncientCard>

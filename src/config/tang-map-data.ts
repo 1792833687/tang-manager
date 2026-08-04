@@ -30,6 +30,8 @@ export const MAP_NODES: readonly MapNode[] = [
   { id: 'jingzhao-fu', name: '京兆府衙门', layer: 'east_west_market', x: 44, y: 86, type: 'government', unlocked: false, description: '京兆府衙，官道政令、戒严放行的中枢。', connectedTo: ['pingzhun-shu', 'xishi-shangtuan', 'huanggong', 'chengwai-sangyuan'] },
   // ---- L2 东市西市（内容深化 TANG-CONT-D 模块四：西市赌坊；解锁条件=谢七登场，见 store）----
   { id: 'west_gambling_den', name: '西市赌坊', layer: 'east_west_market', x: 65, y: 55, type: 'market', unlocked: false, description: '西市赌坊，骰盅声昼夜不绝，三教九流皆在此聚散。', connectedTo: ['xishi-shangtuan', 'shanghao-yi'] },
+  // ---- L2 东市西市（K10 修复 2026-08-06：平康坊补地图节点；苏大娘/阿萤常驻于此）----
+  { id: 'pingkangfang', name: '平康坊 · 醉太平', layer: 'east_west_market', x: 22, y: 82, type: 'npc', unlocked: false, description: '平康坊风月场，醉太平酒肆的苏大娘把消息当买卖，长安城里没有她打听不到的。', connectedTo: ['dongshi-shanghui', 'xishi-shangtuan', 'wuyang-xiang'] },
 
   // ---- L3 长安京畿（6 点：声望≥700 且 阶段≥3 解锁）----
   { id: 'huanggong', name: '皇宫', layer: 'changan', x: 50, y: 14, type: 'government', unlocked: false, description: '大明宫阙，天家气象，寻常商贾难近。', connectedTo: ['jingzhao-fu', 'weiming-lou'] },

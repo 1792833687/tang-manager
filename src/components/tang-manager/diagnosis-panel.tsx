@@ -37,7 +37,8 @@ export function DiagnosisPanel(): React.ReactElement {
     const match = evaluatePrescription(selected, correct, s.ownedMedicalBooks);
     const tier = matchTier(match);
     setResult({ match, tier });
-    if (tier === 'great') { s.updateReputation(5); pushActionFeedback('药到病除，客人千恩万谢（声望+5）', 'success'); }
+    if (tier === 'great') { s.updateReputation(5); s.updateSilver(4); pushActionFeedback('药到病除，客人千恩万谢（药费4两·声望+5）', 'success'); }
+    else if (tier === 'ok') { s.updateSilver(3); pushActionFeedback('疗效尚可，客人付了 3 两药费', 'success'); }
     else if (tier === 'poor') { pushActionFeedback('药不对症，客人摇头而去', 'warning'); }
     else { pushActionFeedback('疗效平平，尚可交代', 'success'); }
   };

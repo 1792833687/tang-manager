@@ -5,7 +5,7 @@
  * 拼桌并单入口 + 已处理缩略 + 留言簿入口 + 打烊结算。
  */
 'use client';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { withBase } from '@/lib/utils/base-path';
 import { GUEST_LEVEL_LABEL } from '@/config/tang-guest-book-content';
 import { GUEST_TYPE_LABEL } from '@/config/tang-guest-content';
@@ -18,10 +18,13 @@ import { ComplaintCard } from './complaint-card';
 import { GuestBookPanel } from './guest-book-panel';
 import { ModalContainer } from './modal-container';
 import { DialoguePanel } from './tang-manager/dialogue-panel';
+import { DialogueOptionsPanel } from './tang-manager/dialogue-options-panel';
+import { generateDialogueOptions, type AIDialogueOptions } from '@/systems/tang-ai-dialogue';
 import { PreorderPanel } from './preorder-panel';
 import { StrategySelector } from './strategy-selector';
 import { triggerTutorial } from '@/systems/tang-tutorial-triggers';
 import { TutorialHighlight } from './tutorial-highlight';
+import { pushActionFeedback } from './action-feedback';
 
 const TYPE_COLOR: Record<GuestType, string> = {
   normal: ANCIENT.primary,
@@ -82,6 +85,17 @@ function PreferenceChips({ guest }: { guest: Guest }): React.ReactElement {
 export function ReceptionPanel(): React.ReactElement {
   const state = useTangManagerStore();
   const [showGuestBook, setShowGuestBook] = useState(false);
+  const currentGuest = state.guests.find((g) => !g.handled) ?? null;
+  const [aiOptions, setAiOptions] = useState<AIDialogueOptions | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    setAiOptions(null);
+    if (!currentGuest) return;
+    void generateDialogueOptions(currentGuest, state.shopType ?? 'jiulou', { score: state.score }).then((opts) => {
+      if (!cancelled) setAiOptions(opts);
+    });
+    return () => { cancelled = true; };
+  }, [currentGuest?.id, state.shopType, state.score]);
   const [tab, setTab] = useState<'reception' | 'preorder'>('reception');
 
   return (
@@ -127,6 +141,28 @@ export function ReceptionPanel(): React.ReactElement {
               <p key={i} className="text-xs leading-5" style={{ color: ANCIENT.text }}>· {n}</p>
             ))}
           </div>
+        </div>
+      )}
+
+      {/* AI 参谋（规格书模块一：天机阁给出 3 个策略选项；采纳建议声望+2 并记入对话上下文） */}
+      {currentGuest && aiOptions && (
+        <div className="rounded-xl px-3 py-2" style={{ backgroundColor: ANCIENT.card, border: `1px solid ${ANCIENT.border}` }}>
+          <div className="mb-1.5 flex items-center justify-between">
+            <span className="text-xs font-bold tracking-[0.3em]" style={{ color: ANCIENT.gold }}>天机 · 接待参谋</span>
+            <button type="button" onClick={() => setAiOptions(null)} className="text-[10px]" style={{ color: ANCIENT.secondary }}>收起</button>
+          </div>
+          <DialogueOptionsPanel
+            data={aiOptions}
+            onPick={(idx) => {
+              const opt = aiOptions.options[idx];
+              if (!opt) return;
+              state.updateReputation(2);
+              state.createDialogueContext(currentGuest.id, { identity: '普通客人', personality: '性情平和', mood: '平淡', preferences: [] });
+              state.appendDialogueHistory(currentGuest.id, { role: 'player', content: opt.text });
+              pushActionFeedback('采纳天机建议，声名渐起（声望+2）', 'success');
+              setAiOptions(null);
+            }}
+          />
         </div>
       )}
 

@@ -2508,6 +2508,10 @@ export interface TangManagerStore extends TangGameState {
   purchaseMedicalBook: (bookId: string) => { ok: boolean; reason?: string };
   /** 亲自坐诊（规格书 2.1：消耗 10 精力） */
   performDiagnosis: (guestId: string) => { ok: boolean; reason?: string };
+  /** 宴席菜单结算（规格书 3.3：按评分档位入账/声望） */
+  settleBanquetMenu: (input: { banquetType: string; budget: number; score: number }) => { silverDelta: number; reputationDelta: number };
+  /** 面料定制结算（规格书 4.3：按匹配档位入账/声望） */
+  settleFabricOrder: (input: { match: number; tier: 'satisfied' | 'normal' | 'refund' }) => { silverDelta: number; reputationDelta: number };
   /** 追加对话历史（上下文管理） */
   appendDialogueHistory: (guestId: string, entry: { role: 'guest' | 'player'; content: string }) => void;
   /** 打烊判定今日要务完成并发放奖励（盖「了」红印；返回新完成 id） */

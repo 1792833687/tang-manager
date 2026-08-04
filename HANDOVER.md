@@ -288,3 +288,18 @@ tsc 零错误 → 全量 **1142 用例全绿（92 文件）** → build 静态�
 模块七 · 测试：+4 文件 34 用例（ai-dialogue/diagnosis/banquet-scoring/fabric-matching），全绿。
 
 验收：tsc 零错误 → 全量 1177 用例全绿（96 文件）→ build 静态导出成功 → Playwright：店铺管理 → 酒楼·庖厨 → 宴席定制菜单（组合评分 10/大获成功/增减菜品）可见，0 控制台错误。
+
+---
+
+## 深度审查优化 · 无关联 UI 清理 + 功能关联加强（2026-08-06）
+
+审查发现并处理：
+1. 删除 3 个零引用死代码组件（inventory-modal / playing-panel / stat-bar，均已迁移为货架面板/经营操作条/概览条）。
+2. 挂载孤立组件 dialogue-options-panel：接入接待面板成为「天机 · 接待参谋」（AI 或兜底生成 3 个策略选项，采纳建议 → 声望+2 + 记入对话上下文 createDialogueContext/appendDialogueHistory），与接待流程打通。
+3. 产业玩法接入真实收益：
+   - 宴席定制「确认开席」→ store.settleBanquetMenu（按评分档位：≥8 大获成功 收益×1.3 声望+10 / 5-7 顺利 / <5 有瑕疵 收益×0.8）；计入 tavernBanquetCount。
+   - 面料定制「确认定制」→ store.settleFabricOrder（satisfied 入账12两声望+6 / normal 8两 / refund 退4两声望-3）；计入 customOrderCount。
+   - 药铺坐诊开方 → 按档位补药费收入（great 4两+声望5 / ok 3两 / poor 无）。
+4. 新增 store 测试 +3（settleBanquetMenu 大获/瑕疵、settleFabricOrder 满意/退款），全绿。
+
+验收：tsc 零错误 → 全量 1180 用例全绿（96 文件）→ build 静态导出成功 → Playwright：接待面板 AI 参谋（3 策略选项/采纳反馈）、宴席开席入账可见，0 控制台错误。

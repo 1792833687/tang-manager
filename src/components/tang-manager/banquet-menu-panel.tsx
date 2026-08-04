@@ -88,7 +88,10 @@ export function BanquetMenuPanel(): React.ReactElement {
         </div>
       </div>
 
-      <button type="button" onClick={() => pushActionFeedback('菜单已定，后厨即刻备席', 'success')} className="rounded-lg px-5 py-2 text-xs font-bold tracking-widest" style={{ backgroundColor: ANCIENT.gold, color: '#FFF' }}>确认菜单 · 开席</button>
+      <button type="button" onClick={() => {
+    const r = s.settleBanquetMenu({ banquetType: type, budget, score });
+    pushActionFeedback('宴席开席：入账 ' + r.silverDelta + ' 两' + (r.reputationDelta ? '，声望+' + r.reputationDelta : ''), r.silverDelta >= 0 ? 'success' : 'warning');
+  }} className="rounded-lg px-5 py-2 text-xs font-bold tracking-widest" style={{ backgroundColor: ANCIENT.gold, color: '#FFF' }}>确认菜单 · 开席</button>
     </div>
   );
 }

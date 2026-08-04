@@ -4,6 +4,7 @@
  */
 'use client';
 import { useState } from 'react';
+import { useTangManagerStore } from '@/stores/tang-manager';
 import { fabricMatchScore, fabricTier, type FabricContext } from '@/systems/tang-fabric-matching';
 import { ANCIENT } from '@/theme/tokens';
 import { pushActionFeedback } from '@/components/action-feedback';
@@ -20,6 +21,7 @@ const OCCASION: Array<{ value: FabricContext['occasion']; label: string }> = [
 const FABRICS = ['粗布', '棉布', '丝绸', '锦缎'];
 
 export function FabricRecommendPanel(): React.ReactElement {
+  const s = useTangManagerStore();
   const [ctx, setCtx] = useState<FabricContext>({ identity: 'commoner', season: 'spring', occasion: 'casual', fabric: '棉布', measured: false });
   const score = fabricMatchScore(ctx);
   const tier = fabricTier(score);
@@ -62,7 +64,10 @@ export function FabricRecommendPanel(): React.ReactElement {
         <button type="button" onClick={() => { set({ measured: !ctx.measured }); pushActionFeedback(ctx.measured ? '已免去量体' : '量体完毕，合身度大增（+20%）', 'success'); }} className="mt-2 rounded px-3 py-1 text-[11px] font-bold" style={{ backgroundColor: ctx.measured ? ANCIENT.primary : ANCIENT.border, color: '#FFF' }}>{ctx.measured ? '已量体 ✓' : '量体（+20%）'}</button>
       </div>
 
-      <button type="button" onClick={() => pushActionFeedback('已确认定制，织工即刻动工', 'success')} className="rounded-lg px-5 py-2 text-xs font-bold tracking-widest" style={{ backgroundColor: ANCIENT.gold, color: '#FFF' }}>确认定制</button>
+      <button type="button" onClick={() => {
+    const r = s.settleFabricOrder({ match: score, tier });
+    pushActionFeedback('定制成交：入账 ' + r.silverDelta + ' 两' + (r.reputationDelta ? '，声望+' + r.reputationDelta : r.reputationDelta < 0 ? '，声望' + r.reputationDelta : ''), r.silverDelta >= 0 ? 'success' : 'warning');
+  }} className="rounded-lg px-5 py-2 text-xs font-bold tracking-widest" style={{ backgroundColor: ANCIENT.gold, color: '#FFF' }}>确认定制</button>
     </div>
   );
 }

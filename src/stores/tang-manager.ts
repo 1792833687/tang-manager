@@ -17,6 +17,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { getDifficultyParams } from '@/config/tang-difficulty';
 import { STREET_NEWS_POOL, STREET_NEWS_KEEP } from '@/config/tang-street-news';
 import { MEDICAL_BOOKS, MEDICAL_BOOK_MAP } from '@/config/tang-medical-books';
+import { banquetTier } from '@/systems/tang-banquet-scoring';
 import { INITIAL_GOODS } from '@/config/tang-initial-goods';
 import { EVENT_DEFINITIONS, EVENT_MAP, buildSeizureEvent } from '@/config/tang-events';
 import { createZustandPersistStorage } from '@/infrastructure/storage/zustand-persist-bridge';
@@ -1013,6 +1014,8 @@ function npcIntelContextOf(s: TangManagerStore): Parameters<typeof performBuyInf
   | 'appendDialogueHistory'
   | 'purchaseMedicalBook'
   | 'performDiagnosis'
+  | 'settleBanquetMenu'
+  | 'settleFabricOrder'
 > {
   const b = getDifficultyParams('B');
   return {
@@ -3178,6 +3181,41 @@ export const useTangManagerStore = create<TangManagerStore>()(
           })
         );
         return { ok: true };
+      },
+      /** 宴席菜单结算（规格书 3.3：≥8 大获成功声望+10 / 5-7 顺利 / <5 有瑕疵收益-20%） */
+      settleBanquetMenu: (input): { silverDelta: number; reputationDelta: number } => {
+        const s = get();
+        if (s.phase !== 'playing') return { silverDelta: 0, reputationDelta: 0 };
+        const tier = banquetTier(input.score);
+        const base = Math.round((input.budget ?? 30) * 0.4 * 100) / 100;
+        const mult = tier === 'great' ? 1.3 : tier === 'ok' ? 1 : 0.8;
+        const silverDelta = Math.round(base * mult * 100) / 100;
+        const reputationDelta = tier === 'great' ? 10 : 0;
+        set((st) =>
+          syncCompat(st, {
+            silver: Math.max(0, st.silver + silverDelta),
+            reputation: clamp((st.reputation ?? 0) + reputationDelta, 0, 1000),
+            tavernBanquetCount: (st.tavernBanquetCount ?? 0) + 1,
+            eventLog: [...st.eventLog, `banquet-settle:${input.banquetType}:score${input.score}:${st.day}`],
+          })
+        );
+        return { silverDelta, reputationDelta };
+      },
+      /** 面料定制结算（规格书 4.3：satisfied 溢价 / normal 正常 / refund 退款受损） */
+      settleFabricOrder: (input): { silverDelta: number; reputationDelta: number } => {
+        const s = get();
+        if (s.phase !== 'playing') return { silverDelta: 0, reputationDelta: 0 };
+        const silverDelta = input.tier === 'satisfied' ? 12 : input.tier === 'normal' ? 8 : -4;
+        const reputationDelta = input.tier === 'satisfied' ? 6 : input.tier === 'refund' ? -3 : 0;
+        set((st) =>
+          syncCompat(st, {
+            silver: Math.max(0, st.silver + silverDelta),
+            reputation: clamp((st.reputation ?? 0) + reputationDelta, 0, 1000),
+            customOrderCount: (st.customOrderCount ?? 0) + 1,
+            eventLog: [...st.eventLog, `fabric-order:match${input.match}:${st.day}`],
+          })
+        );
+        return { silverDelta, reputationDelta };
       },
       /** 亲自坐诊（规格书 2.1）：消耗 10 精力 */
       performDiagnosis: (guestId): { ok: boolean; reason?: string } => {

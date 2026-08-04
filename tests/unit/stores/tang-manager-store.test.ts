@@ -530,3 +530,38 @@ describe('Step 5b · 市井消息（2026-08-06 新增系统）', () => {
     expect((useTangManagerStore.getState().streetNews ?? []).length).toBeLessThanOrEqual(10);
   });
 });
+describe('Step 5b · 产业玩法结算（2026-08-06 关联接线）', () => {
+  it('settleBanquetMenu：大获成功 → 声望+10 且入账（评分≥8）', () => {
+    const store = useTangManagerStore.getState();
+    store.initByDifficulty('B');
+    const repBefore = useTangManagerStore.getState().reputation;
+    const silverBefore = useTangManagerStore.getState().silver;
+    const r = store.settleBanquetMenu({ banquetType: 'shou_yan', budget: 30, score: 10 });
+    expect(r.reputationDelta).toBe(10);
+    expect(r.silverDelta).toBeGreaterThan(0);
+    expect(useTangManagerStore.getState().reputation).toBe(repBefore + 10);
+    expect(useTangManagerStore.getState().silver).toBeGreaterThan(silverBefore);
+    expect(useTangManagerStore.getState().tavernBanquetCount).toBeGreaterThan(0);
+  });
+
+  it('settleBanquetMenu：有瑕疵 → 收益打 8 折无声望', () => {
+    const store = useTangManagerStore.getState();
+    store.initByDifficulty('B');
+    const r = store.settleBanquetMenu({ banquetType: 'shou_yan', budget: 30, score: 3 });
+    expect(r.reputationDelta).toBe(0);
+    expect(r.silverDelta).toBe(Math.round(30 * 0.4 * 0.8 * 100) / 100);
+  });
+
+  it('settleFabricOrder：满意溢价入账；退款受损', () => {
+    const store = useTangManagerStore.getState();
+    store.initByDifficulty('B');
+    const repBefore = useTangManagerStore.getState().reputation;
+    const good = store.settleFabricOrder({ match: 90, tier: 'satisfied' });
+    expect(good.silverDelta).toBe(12);
+    expect(good.reputationDelta).toBe(6);
+    expect(useTangManagerStore.getState().reputation).toBe(repBefore + 6);
+    const bad = store.settleFabricOrder({ match: 30, tier: 'refund' });
+    expect(bad.silverDelta).toBe(-4);
+    expect(bad.reputationDelta).toBe(-3);
+  });
+});

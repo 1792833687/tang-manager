@@ -34,6 +34,7 @@ import type {
   Weaver,
 } from '@/types/tang-industry';
 import type { DishCategory, HerbRecipeCategory } from '@/types/tang-industry';
+import type { PoliticsDecision } from '@/config/tang-politics-decisions';
 import type { EventFatigue, EventRecord, NodeStoriesRevealed, NodeStory, PendingConsequence } from '@/types/tang-map-story';
 import type { MapRegion } from '@/types/tang-map-story';
 import type { AiContentType } from '@/systems/tang-ai-generator';
@@ -1712,6 +1713,13 @@ export interface TangGameState {
   noExpiryStreak: number;
   /** 连续全亲自接待天数（过度劳累判定；settleDay 维护） */
   consecutiveFullReceptionDays: number;
+  // ---- 官场线·转政最小闭环（P1-2026-08-05） ----
+  /** 已办政务数（0-5） */
+  politicsStep: number;
+  /** 五道政务是否尽办（→ 权倾朝野） */
+  politicsDone: boolean;
+  /** 当前待办政务 */
+  currentPoliticsDecision: PoliticsDecision | null;
   /** 玩家身份（identity 阶段填写后写入） */
   player: PlayerIdentity | null;
   /** 店型（shop-type 阶段选择后写入） */
@@ -2262,6 +2270,10 @@ export interface TangManagerStore extends TangGameState {
   industryUpgrade: (kind: 'tavern' | 'clothier' | 'herbalist') => void;
   /** 产业总览（me 面板经营之道） */
   industryOverview: () => IndustryOverview | null;
+  /** 购置分店（P1-2026-08-05 方案 A：第一家 800 两，逐店递增；shopCount+1、maxEmployees+2） */
+  purchaseBranch: () => { ok: boolean; reason?: string };
+  /** 处理一道政务（转政闭环：应用效果 + 步进；5 道尽办 → 权倾朝野） */
+  resolvePoliticsDecision: (choiceId: string) => void;
   // ---- 地图与事件深化 actions（模块七） ----
   /** 记录事件选择（eventHistory） */
   recordEvent: (eventId: string, choiceId: string, narrative: string) => void;

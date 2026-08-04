@@ -30,6 +30,10 @@ export function PoliticsPanel(): React.ReactElement {
   const phase = useTangManagerStore((s) => s.phase);
   const day = useTangManagerStore((s) => s.day);
   const decrees = useTangManagerStore((s) => s.decrees ?? []);
+const politicsStep = useTangManagerStore((s) => s.politicsStep ?? 0);
+const politicsDone = useTangManagerStore((s) => s.politicsDone ?? false);
+const currentDecision = useTangManagerStore((s) => s.currentPoliticsDecision ?? null);
+const resolvePoliticsDecision = useTangManagerStore((s) => s.resolvePoliticsDecision);
   const factions = useTangManagerStore((s) => s.factions ?? []);
   const court = factions.find((f) => f.id === 'court');
   const politicalFaction = useTangManagerStore((s) => s.politicalFaction);
@@ -60,12 +64,39 @@ export function PoliticsPanel(): React.ReactElement {
   if (phase === 'politics') {
     return (
       <AncientCard title="巍明楼 · 官场线" accent={ANCIENT.accent}>
-        <p className="text-sm leading-relaxed tracking-wider" style={{ color: ANCIENT.text }}>
-          你已踏入庙堂。官场线深度玩法尚在营造之中，此间暂为占位。
-        </p>
-        <p className="mt-2 text-xs tracking-widest" style={{ color: ANCIENT.secondary }}>
-          商海已是过往，且看朝堂风云——敬请期待后续。
-        </p>
+        {currentDecision ? (
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-bold tracking-[0.2em]" style={{ color: ANCIENT.text }}>{currentDecision.title}</span>
+              <span className="rounded px-2 py-0.5 text-[10px] tracking-widest" style={{ backgroundColor: ANCIENT.accent, color: '#FFFFFF' }}>
+                政务 {Math.min(politicsStep + 1, 5)} / 5
+              </span>
+            </div>
+            <p className="text-sm leading-relaxed" style={{ color: ANCIENT.secondary }}>{currentDecision.description}</p>
+            <div className="flex flex-col gap-2">
+              {currentDecision.choices.map((ch) => (
+                <button
+                  key={ch.id}
+                  type="button"
+                  onClick={() => resolvePoliticsDecision(ch.id)}
+                  className="rounded-lg px-3 py-2 text-left text-xs font-bold tracking-wider transition-transform active:scale-[0.99]"
+                  style={{ backgroundColor: ANCIENT.card, color: ANCIENT.text, border: `1px solid ${ANCIENT.accent}` }}
+                >
+                  {ch.label}
+                  <span className="mt-0.5 block text-[10px] font-normal" style={{ color: ANCIENT.secondary }}>{ch.consequence}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        ) : politicsDone ? (
+          <p className="text-sm leading-relaxed tracking-wider" style={{ color: ANCIENT.text }}>
+            五道政务一一落定，朝野上下莫不叹服。你立于庙堂之巅，遥望当年长安东市那间老店——恍如隔世。大业已成，权倾朝野。
+          </p>
+        ) : (
+          <p className="text-sm leading-relaxed tracking-wider" style={{ color: ANCIENT.text }}>
+            你已踏入庙堂。今日无待办政务，明日自有朝事相询。
+          </p>
+        )}
         <div className="mt-4 flex justify-end gap-2">
           <button
             type="button"

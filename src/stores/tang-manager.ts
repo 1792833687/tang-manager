@@ -242,6 +242,7 @@ import { generateNodeStory } from '@/systems/tang-node-stories';
 import { addPendingConsequence as addPendingConsequenceSystem, checkPendingConsequences as checkPendingConsequencesSystem, recordEvent as recordEventSystem } from '@/systems/tang-event-consequences';
 import { checkBehaviorTriggers } from '@/systems/tang-event-consequences';
 import { BEHAVIOR_EVENTS } from '@/config/tang-behavior-events';
+import { POLITICS_DECISIONS, type PoliticsDecision } from '@/config/tang-politics-decisions';
 import { canTriggerEvent as canTriggerEventSystem, recordTrigger as recordTriggerSystem, createEventFatigue } from '@/systems/tang-event-fatigue';
 import { YONGLE_EVENTS } from '@/config/tang-events-yongle';
 import { EAST_MARKET_EVENTS } from '@/config/tang-events-east-market';
@@ -993,6 +994,8 @@ function npcIntelContextOf(s: TangManagerStore): Parameters<typeof performBuyInf
   | 'clearAiLog'
   | 'checkBehaviorEvents'
   | 'maybeRegionEvent'
+  | 'purchaseBranch'
+  | 'resolvePoliticsDecision'
 > {
   const b = getDifficultyParams('B');
   return {
@@ -1063,6 +1066,9 @@ function npcIntelContextOf(s: TangManagerStore): Parameters<typeof performBuyInf
     lastMindReadDay: 0,
     noExpiryStreak: 0,
     consecutiveFullReceptionDays: 0,
+    politicsStep: 0,
+    politicsDone: false,
+    currentPoliticsDecision: null,
     ledger: [],
     todaySettlement: null,
     shopItems: [],
@@ -2165,6 +2171,24 @@ export const useTangManagerStore = create<TangManagerStore>()(
         }
         get().checkBehaviorEvents(get().day);
         get().maybeRegionEvent(get().day);
+        // P1-2026-08-05：派系党争接线（已选政治派系时每 30 天触发一次）
+        {
+          const cur = get();
+          if ((cur.politicalFaction ?? null) && (cur.day % 30 === 0)) {
+            get().runFactionPowerStruggle();
+          }
+        }
+        // P1-2026-08-05：月度政令接线（每月初生成 Decree；巍明楼政令横幅已动态渲染）
+        if (get().day % 30 === 1) {
+          get().generateDecree();
+        }
+        // P1-2026-08-05：转政最小闭环——官场线每日派发政务
+        {
+          const cur = get();
+          if (cur.phase === 'politics' && !cur.politicsDone && !cur.currentPoliticsDecision) {
+            set({ currentPoliticsDecision: POLITICS_DECISIONS[cur.politicsStep ?? 0] ?? null });
+          }
+        }
         set({
           dailyStaffGreeting: pickStaffGreeting({
             employees: get().employees ?? [],
@@ -2991,6 +3015,8 @@ export const useTangManagerStore = create<TangManagerStore>()(
           tags: ['庙堂', '党争'],
         });
         set((st) => ({ journal: [...(st.journal ?? []), entry] }));
+        // P1-2026-08-05：党争结果弹窗展示
+        set({ storyNarrative: { title: '派系党争', body: res.description, numbers: ['政治立场 ±变动', '已记入手札'], source: 'template' } });
       },
 
       /** 接受官职（转政：phase='politics' + politicalLine=true + 记录抉择） */
@@ -6197,6 +6223,49 @@ export const useTangManagerStore = create<TangManagerStore>()(
         set({ ...patch, eventLog: [...s.eventLog, '[第' + s.day + '日] ' + industryNameDef(kind) + '晋升「' + next.name + '」'] });
       },
 
+      purchaseBranch: (): { ok: boolean; reason?: string } => {
+        const s = get();
+        const shopCount = s.shopCount ?? 1;
+        const cost = 800 * shopCount;
+        if (s.silver < cost) return { ok: false, reason: '银两不足（需 ' + cost + ' 两）' };
+        const branchLabel = '分店·' + '甲乙丙丁戊己庚辛壬癸'.charAt(shopCount - 1);
+        set({
+          silver: s.silver - cost,
+          gold: s.silver - cost,
+          shopCount: shopCount + 1,
+          maxEmployees: (s.maxEmployees ?? 4) + 2,
+          ledger: appendLedger(s.ledger, [{ day: s.day, project: '购置' + branchLabel, category: '支出' as const, amount: -cost }]),
+          eventLog: [...s.eventLog, '[第' + s.day + '日] 购置' + branchLabel + '，耗银 ' + cost + ' 两'],
+          storyNarrative: { title: '新店开张', body: '（你在长安另置一铺——' + branchLabel + '开张。伙计名额渐宽，往来货物也周转得更快了。）', numbers: ['支出 ' + cost + ' 两', '可雇佣伙计 +2'], source: 'template' },
+        });
+        return { ok: true };
+      },
+
+      resolvePoliticsDecision: (choiceId): void => {
+        const s = get();
+        const decision = s.currentPoliticsDecision;
+        if (!decision || s.phase !== 'politics') return;
+        const choice = decision.choices.find((c) => c.id === choiceId);
+        if (!choice) return;
+        const patch: Partial<TangManagerStore> = {};
+        const eff = choice.effect;
+        if (eff.reputation) patch.reputation = clamp(s.reputation + eff.reputation, 0, 1000);
+        if (eff.score) patch.score = clamp(s.score + eff.score, 1.0, 5.0);
+        if (eff.alignmentDelta) patch.politicalAlignment = Math.max(0, (s.politicalAlignment ?? 0) + eff.alignmentDelta);
+        const nextStep = (s.politicsStep ?? 0) + 1;
+        if (nextStep >= POLITICS_DECISIONS.length) {
+          patch.politicsStep = nextStep;
+          patch.politicsDone = true;
+          patch.currentPoliticsDecision = null;
+          set({ ...patch, storyNarrative: { title: '大业已成', body: '（五道政务一一落定，朝野上下莫不叹服。你立于庙堂之巅，遥望当年长安东市那间老店——恍如隔世。）', numbers: ['权倾朝野'], source: 'template' } });
+          get().triggerEnding('quanqing-chaoye');
+        } else {
+          patch.politicsStep = nextStep;
+          patch.currentPoliticsDecision = POLITICS_DECISIONS[nextStep]!;
+          set({ ...patch, storyNarrative: { title: '政务落定', body: '（' + choice.consequence + '）', numbers: ['已办 ' + nextStep + '/' + POLITICS_DECISIONS.length], source: 'template' } });
+        }
+      },
+
       industryOverview: (): IndustryOverview | null => {
         const s = get();
         if (!s.shopType) return null;
@@ -6566,6 +6635,9 @@ export const useTangManagerStore = create<TangManagerStore>()(
         lastMindReadDay: s.lastMindReadDay ?? 0,
         noExpiryStreak: s.noExpiryStreak ?? 0,
         consecutiveFullReceptionDays: s.consecutiveFullReceptionDays ?? 0,
+        politicsStep: s.politicsStep ?? 0,
+        politicsDone: s.politicsDone ?? false,
+        currentPoliticsDecision: s.currentPoliticsDecision ?? null,
       }),
       // 兼容字段兜底同步：rehydrate 后 gold←silver / debt←legacyDebt（持久化只存 silver/legacyDebt）
       onRehydrateStorage: () => (state) => {

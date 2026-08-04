@@ -98,6 +98,13 @@ export function MePanel(): React.ReactElement {
 
   // 内容深化 TANG-CONT-B 模块一：变卖分店二次确认（null 关闭）
   const [sellOpen, setSellOpen] = useState(false);
+  // P1（2026-08-05）：购置分店（方案 A：第一家 800 两，逐店递增）
+  const [buyOpen, setBuyOpen] = useState(false);
+  const branchCost = 800 * Math.max(1, (state.shopCount ?? 1));
+  const handleBuyBranch = (): void => {
+    const res = state.purchaseBranch();
+    pushActionFeedback(res.ok ? '新店开张' : (res.reason ?? '购置失败'), res.ok ? 'success' : 'warning');
+  };
   const branchCount = Math.max(0, (state.shopCount ?? 1) - 1);
   const branchValuation = estimateShopValue();
   const strategy = state.businessStrategy ?? 'steady';
@@ -245,6 +252,15 @@ export function MePanel(): React.ReactElement {
               </div>
             ))}
         </div>
+        <button
+          type="button"
+          onClick={() => setBuyOpen(true)}
+          disabled={state.silver < branchCost}
+          className="mt-2 w-full rounded-lg px-3 py-2 text-xs font-bold tracking-widest transition-transform active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-40"
+          style={{ backgroundColor: ANCIENT.primary, color: '#FFFFFF' }}
+        >
+          购置分店（{formatMoney(branchCost)} 两，可雇佣伙计 +2）
+        </button>
         {/* 经营策略（内容深化 TANG-CONT-B 模块六·1）：薄利多销/奇货可居/稳健经营 */}
         <div className="mt-3 border-t pt-2" style={{ borderColor: ANCIENT.border }}>
           <BusinessStrategySelector />
@@ -275,6 +291,16 @@ export function MePanel(): React.ReactElement {
         </button>
       </div>
 
+      {/* 购置分店确认（P1；DangerConfirm 复用） */}
+      {buyOpen && (
+        <DangerConfirm
+          title="购置分店"
+          risk={`耗银 ${formatMoney(branchCost)} 两另置一铺，伙计名额 +2（可雇佣上限提升）。是否继续？`}
+          confirmLabel={`购置（${formatMoney(branchCost)} 两）`}
+          onConfirm={() => { handleBuyBranch(); setBuyOpen(false); }}
+          onClose={() => setBuyOpen(false)}
+        />
+      )}
       {/* 变卖分店二次确认（内容深化 TANG-CONT-B 模块一；DangerConfirm 复用） */}
       {sellOpen && (
         <DangerConfirm

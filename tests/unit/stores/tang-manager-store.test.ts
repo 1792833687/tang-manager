@@ -419,3 +419,37 @@ describe('更多接线集成（连锁到期 / 行为触发 / 产业每日结算�
     expect(after.tavernDishes.length >= dishesBefore || after.tavernResearchExp > expBefore).toBe(true);
   });
 });
+
+describe('P1 新接线（购店 / 转政政务闭环）', () => {
+  it('purchaseBranch：银两不足拒绝；足额后 shopCount+1、maxEmployees+2、扣银', () => {
+    const st = useTangManagerStore.getState();
+    st.initByDifficulty('B');
+    const low = useTangManagerStore.getState().purchaseBranch();
+    expect(low.ok).toBe(false);
+    useTangManagerStore.setState({ silver: 1000, gold: 1000 });
+    const res = useTangManagerStore.getState().purchaseBranch();
+    expect(res.ok).toBe(true);
+    const after = useTangManagerStore.getState();
+    expect(after.shopCount).toBe(2);
+    expect(after.maxEmployees).toBe(6); // 4 + 2
+    expect(after.silver).toBe(200); // 1000 - 800
+  });
+  it('resolvePoliticsDecision：逐道政务推进，5 道尽办 → 权倾朝野结局', () => {
+    const st = useTangManagerStore.getState();
+    st.initByDifficulty('B');
+    useTangManagerStore.setState({ phase: 'politics', politicsStep: 0, politicsDone: false, currentPoliticsDecision: { id: 'pol-caoyun', title: '漕运决案', description: 'x', choices: [{ id: 'a', label: 'a', consequence: 'c', effect: { reputation: 8 } }] } });
+    useTangManagerStore.getState().resolvePoliticsDecision('a');
+    let s = useTangManagerStore.getState();
+    expect(s.politicsStep).toBe(1);
+    expect(s.reputation).toBeGreaterThanOrEqual(st.reputation + 8);
+    // 简化：直接推进到最后一题并答完
+    useTangManagerStore.setState({
+      politicsStep: 4,
+      currentPoliticsDecision: { id: 'pol-huangshang', title: '皇商招标', description: 'x', choices: [{ id: 'a', label: 'a', consequence: 'c', effect: { reputation: 8 } }] },
+    });
+    useTangManagerStore.getState().resolvePoliticsDecision('a');
+    s = useTangManagerStore.getState();
+    expect(s.politicsDone).toBe(true);
+    expect(s.endingTriggered).toBe('quanqing-chaoye');
+  });
+});

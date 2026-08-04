@@ -1,0 +1,52 @@
+name: Deploy to GitHub Pages
+
+# 触发：push 到 main 分支
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # 串行：安装 → 类型检查 → 测试 → 构建（构建依赖前序全部通过）
+      - name: Typecheck
+        run: npm run typecheck
+        env:
+          NEXT_TELEMETRY_DISABLED: '1'
+
+      - name: Unit tests
+        run: npm run test:unit
+        env:
+          NEXT_TELEMETRY_DISABLED: '1'
+
+      - name: Build (static export)
+        run: npm run build
+        env:
+          NEXT_TELEMETRY_DISABLED: '1'
+          # 独立项目：根路径部署，不注入 NEXT_PUBLIC_BASE_PATH（无子路径 basePath）
+
+      - name: Deploy out/ to gh-pages
+        uses: JamesIves/github-pages-deploy-action@v4
+        with:
+          folder: out
+          branch: gh-pages
+          clean: true
+          # 不带 basePath：静态导出以根路径发布（若日后改为子路径部署，
+          # 需同步注入 NEXT_PUBLIC_BASE_PATH 并在 next.config 设置 basePath）

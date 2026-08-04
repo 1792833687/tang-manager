@@ -1,6 +1,6 @@
 # 《我在唐朝当掌柜》独立项目 · 交接报告
 
-> 生成时间：2026-08-04 15:31（E2 完成后更新）
+> 生成时间：2026-08-04 16:04（部署上线后更新）
 > 交接方：游戏开发工作室（主理人·游承峰）
 > 接手方：tang-manager 独立项目维护团队
 
@@ -43,7 +43,7 @@
 |---|---|---|
 | E1 项目骨架 | ✅ 完成 | 文件迁移（src 203/tests 73/public 155）、路径替换（@/components/tang-manager/→@/components/、@/theme/ancient/→@/theme/）、依赖收敛（next/react/react-dom/zustand/uuid/idb/zod）、tsc 零错误、源项目零修改 |
 | E2 测试+构建+Git | ✅ 完成 | tsc 零错误 → 全量测试 73 文件/1000 用例全绿 → build 串行成功（out 静态导出，`/` 直达游戏）→ git init(main) + 首次提交 + deploy.yml 就绪 |
-| 部署上线 | 🔜 待办 | 新仓库 GitHub Pages（独立域名路径，无 /watchparty 前缀）；EdgeOne 备用 |
+| 部署上线 | ✅ 完成 | 新仓库 1792833687/tang-manager GitHub Pages 已上线：https://1792833687.github.io/tang-manager/（/ 直达唐朝掌柜，无 /watchparty 前缀）；EdgeOne 备用 |
 
 ## 四、测试基线
 
@@ -58,7 +58,8 @@
 
 ### GitHub Pages（主）
 - 源仓库 watchparty（1792833687/watchparty）：gh-pages @ `65fa97e5`（v1.0 + network-first sw.js），线上 https://1792833687.github.io/watchparty/scripts/tang-manager
-- **新独立仓库**：git init（main）+ 首次提交已完成（哈希见 git log）；远程未配置（无 token 不推）；deploy.yml 已就绪（JamesIves action，push main → build → 推 gh-pages）
+- **新独立仓库**：1792833687/tang-manager（public）已创建并上线 —— main @ `6526db1e`（本机 github.com 直连被阻断，走 github-api-push.mjs API 推送）；deploy.yml 已验证（Actions #30889723894 success：typecheck→test→build→JamesIves 推 gh-pages）
+- **线上地址**：https://1792833687.github.io/tang-manager/（gh-pages @ `9504d0f`，2026-08-04 上线；`/` 直达唐朝掌柜，`/scripts` 入口页，sw.js network-first v7.0.0，图片/资源 200 验证通过）
 
 ### EdgeOne Makers（备选）
 - 项目名 tang-shopkeeper：https://tang-shopkeeper-4tgvwhw2.edgeone.cool/scripts/tang-manager?eo_token=...（token 有时效，过期需重新部署）

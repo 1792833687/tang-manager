@@ -227,6 +227,7 @@ import type {
 } from '@/types/tang-manager';
 import type { FactionPerk, FactionUpdateResult } from '@/types/tang-factions';
 import { generateStaffReminders, applyReminderEffect } from '@/systems/tang-staff-reminders';
+import { generateAiText, generateAiGuestReview } from '@/systems/tang-ai-generator';
 import { pickStaffGreeting, pickStaffReport } from '@/systems/tang-staff-daily';
 import type { ReminderContext, StaffReminder } from '@/types/tang-reminders';
 import { startTavernResearch as startTavernResearchSystem, settleTavernResearch as settleTavernResearchSystem, canSetSignature, signaturePrice, tavernLevelPriceBonus, checkTavernLevelUp, applyResearchExperience } from '@/systems/tang-tavern-recipes';
@@ -2568,6 +2569,16 @@ export const useTangManagerStore = create<TangManagerStore>()(
           }
           return { guestBook: [...book, entry] };
         });
+        // 天机阁 AI 接线（v1.1 模块五 5.1：客人评价 AI 优先，模板兜底；best-effort 不阻塞）
+        if (entry.type === 'praise') {
+          void (async () => {
+            const res = await generateAiGuestReview(entry.guestName, entry.content, { onLog: (e) => get().recordAiLog(e) });
+            if (res.source === 'ai' && res.text) {
+              const cur = get();
+              set({ guestBook: (cur.guestBook ?? []).map((e) => (e.guestName === entry.guestName && e.day === entry.day && e.type === 'praise' ? { ...e, content: res.text } : e)) });
+            }
+          })();
+        }
       },
 
       // ============================================================
@@ -3462,6 +3473,23 @@ export const useTangManagerStore = create<TangManagerStore>()(
           monthlyReviews: [...(st.monthlyReviews ?? []), review],
           journal: [...(st.journal ?? []), entry],
         }));
+        // 天机阁 AI 接线（v1.1 模块五 5.1：月度总结 AI 优先，模板兜底；best-effort 不阻塞）
+        void (async () => {
+          const base = '第' + month + '月，本月净收益 ' + netProfit + ' 两，最畅销 ' + bestGood + '，难忘之客 ' + memorableGuest + '，最大失策 ' + biggestMistake + '。' + hired;
+          const res = await generateAiText('monthly', { userPrompt: base, fallback: review.content }, { onLog: (e) => get().recordAiLog(e) });
+          if (res.source === 'ai' && res.text) {
+            const cur = get();
+            const idx = (cur.monthlyReviews ?? []).length - 1;
+            if (idx >= 0) {
+              set({ monthlyReviews: (cur.monthlyReviews ?? []).map((r, i) => (i === idx ? { ...r, content: res.text } : r)) });
+              const jList = cur.journal ?? [];
+              const revIdx = jList.map((j) => (j.tags ?? []).includes('月度总结')).lastIndexOf(true);
+              if (revIdx >= 0) {
+                set({ journal: jList.map((e, i) => (i === revIdx ? { ...e, content: res.text } : e)) });
+              }
+            }
+          }
+        })();
         return review;
       },
 
@@ -6217,9 +6245,13 @@ export const useTangManagerStore = create<TangManagerStore>()(
         if (silverDelta !== 0) patch.silver = Math.max(0, s.silver + silverDelta);
         if (repDelta !== 0) patch.reputation = clamp(s.reputation + repDelta, 0, 1000);
         const narrative = due.map((d) => d.narrative).join(' ');
+        const numParts: string[] = [];
+        if (silverDelta !== 0) numParts.push((silverDelta > 0 ? '+' : '') + silverDelta + ' 两');
+        if (repDelta !== 0) numParts.push((repDelta > 0 ? '+' : '') + repDelta + ' 声望');
+        if (numParts.length === 0) numParts.push('连锁事件已触发');
         set({
           ...patch,
-          storyNarrative: { title: '连锁事至', body: narrative, numbers: ['连锁事件已触发'], source: 'template' },
+          storyNarrative: { title: '连锁事至', body: narrative, numbers: numParts, source: 'template' },
         });
       },
 

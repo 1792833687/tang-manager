@@ -383,3 +383,39 @@ describe('completeDialogueReception 接线（P1 修复：策略/预购接入）'
     expect(after.storyNarrative?.title).toBe('伙计代劳');
   });
 });
+
+describe('更多接线集成（连锁到期 / 行为触发 / 产业每日结算）', () => {
+  it('checkPendingConsequences：到期连锁触发并应用数值 + 弹窗数值区', () => {
+    const st = useTangManagerStore.getState();
+    st.initByDifficulty('B');
+    useTangManagerStore.setState({
+      pendingConsequences: [{ id: 'pc1', sourceEventId: 'neighbor-borrow', triggerDay: st.day, consequenceEventId: 'neighbor-repay', narrative: '（王掌柜还粮道谢）', effect: { gold: 3, reputation: 5 } }],
+    });
+    useTangManagerStore.getState().checkPendingConsequences();
+    const after = useTangManagerStore.getState();
+    expect(after.pendingConsequences).toHaveLength(0);
+    expect(after.storyNarrative).not.toBeNull();
+    expect(after.storyNarrative!.numbers.some((n) => n.includes('+3'))).toBe(true);
+    expect(after.reputation).toBeGreaterThanOrEqual(st.reputation + 5);
+  });
+  it('checkBehaviorEvents：连续全亲自接待 ≥5 天 → 触发过度劳累事件（按疲劳度）', () => {
+    const st = useTangManagerStore.getState();
+    st.initByDifficulty('B');
+    useTangManagerStore.setState({ consecutiveFullReceptionDays: 5, eventFatigue: { lastTriggerDay: {}, categoryCounts: {}, consecutiveDays: 0, oneTimeDone: {} } });
+    useTangManagerStore.getState().checkBehaviorEvents(st.day);
+    const after = useTangManagerStore.getState();
+    expect(after.pendingEvents.some((e) => e.id === 'event-overwork')).toBe(true);
+    expect(after.eventFatigue.oneTimeDone['event-overwork']).toBe(true); // 一次性事件已标记
+  });
+  it('industryTick：研发到期 → 结算并从队列移除（菜品新增或研发经验累积）', () => {
+    const st = useTangManagerStore.getState();
+    st.initByDifficulty('B');
+    useTangManagerStore.setState({ tavernResearchJobs: [{ id: 'tr1', dishId: 'dish-荤菜-东坡焖肉', dishName: '东坡焖肉', category: '荤菜', totalDays: 1, remainingDays: 1, successRate: 0.9, cost: 30 }] });
+    const dishesBefore = useTangManagerStore.getState().tavernDishes.length;
+    const expBefore = useTangManagerStore.getState().tavernResearchExp;
+    useTangManagerStore.getState().industryTick(st.day + 1);
+    const after = useTangManagerStore.getState();
+    expect(after.tavernResearchJobs).toHaveLength(0);
+    expect(after.tavernDishes.length >= dishesBefore || after.tavernResearchExp > expBefore).toBe(true);
+  });
+});

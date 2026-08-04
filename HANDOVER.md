@@ -113,6 +113,7 @@
 | 五 **AI 全量接入** | 统一生成器 `tang-ai-generator.ts`（8 类内容 × 专用系统提示词；优先级：类型开关→在线→key→AI 8s→模板；流式/非流式统一；静默降级）；店员提醒/节点故事已接线 AI 优先；兜底模板聚合 `tang-fallback-templates.ts`；store：`aiContentToggles`（天机阁逐类开关）+ `aiGenerationLog`（调试成功率）+ persist **v20** |
 
 **验收**：tsc 零错误 → 全量 **89 文件 / 1116 用例全绿**（零回归）→ build 成功（251kB）。五模块提交见 git log（d236d88 / f7308e3 / 041fbbb / 563614f / +AI）。
+- **P0 修复集（2026-08-05，已上线）**：① 开局界面被新手引导遮罩盖住（FIRST_GUEST 在身份阶段误触发）→ 状态型引导仅 `phase==='playing'` 触发；② 产业面板不再三产业全显 → 按所选店型隔离（选酒楼只见酒楼产业）；③ 行为/库存/人际触发事件与四区域事件池接入每日清晨事件流（checkBehaviorEvents + maybeRegionEvent，按疲劳度）；④ 天机阁新增 AI 内容逐类开关 + 调试成功率；⑤ me 面板新增「重新开档」（清档重走开局，成就保留）。Playwright 真机验证：开局全流程可走通、产业隔离正确、0 错误。
 
 ---## 三、当前进度（E1 + E2 完成）
 

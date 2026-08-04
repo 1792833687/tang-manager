@@ -56,7 +56,7 @@ function useTypewriter(text: string, speed = 30): string {
 
 const SHOP_ICON: Record<ShopType, string> = { jiulou: '🍶', buzhuang: '🧵', yaopu: '🌿' };
 
-function Bubble({ role, content }: { role: DialogueMessage['role']; content: string }): React.ReactElement {
+function Bubble({ role, content, source }: { role: DialogueMessage['role']; content: string; source?: DialogueMessage['source'] }): React.ReactElement {
   const isGuest = role === 'guest';
   return (
     <div className={`flex ${isGuest ? 'justify-start' : 'justify-end'}`}>
@@ -69,6 +69,9 @@ function Bubble({ role, content }: { role: DialogueMessage['role']; content: str
         }}
       >
         {content}
+        {source === 'ai' && (
+          <span className="ml-1 select-none text-[9px] tracking-widest opacity-40" style={{ color: ANCIENT.gold }} aria-label="天机所拟">✦天机</span>
+        )}
       </div>
     </div>
   );
@@ -359,7 +362,7 @@ export function DialoguePanel({ guest }: { guest: Guest }): React.ReactElement {
       {/* 中部对话区 */}
       <div className="max-h-64 space-y-2 overflow-y-auto rounded-xl p-3" style={{ backgroundColor: ANCIENT.card, border: `1px solid ${ANCIENT.border}` }}>
         {history.map((m, i) => (
-          <Bubble key={i} role={m.role} content={m.content} />
+          <Bubble key={i} role={m.role} content={m.content} source={m.source} />
         ))}
         {phase === 'greeting' && typed && (
           <Bubble role="guest" content={typingDone ? typed : typedOut} />

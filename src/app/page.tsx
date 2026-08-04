@@ -34,6 +34,8 @@ import { DifficultyPanel } from '@/components/difficulty-panel';
 import { EndingOverlay } from '@/components/ending-overlay';
 import { StoryModal } from '@/components/tang-manager/story-modal';
 import { StaffReminderHost } from '@/components/tang-manager/staff-reminder-host';
+import { ShopOverviewStrip } from '@/components/shop-overview-strip';
+import { SettlementSummaryModal } from '@/components/settlement-summary-modal';
 import { GameErrorBoundary } from '@/components/game-error-boundary';
 import { EventPanel } from '@/components/event-panel';
 import { FactionPanel } from '@/components/faction-panel';
@@ -348,6 +350,7 @@ export default function TangManagerPage(): React.ReactElement {
                      接待导航 → 富接待面板（队列/耐心/六操作/留言簿/打烊），其余面板走看板 */
                   <>
                     <OperationsStatusStrip />
+                    <ShopOverviewStrip />
                     {pendingCount > 0 ? (
                       <EventPanel />
                     ) : activePanel === 'reception' ? (
@@ -372,6 +375,7 @@ export default function TangManagerPage(): React.ReactElement {
           {/* 多结局全屏弹窗（v1.0 由 nav-sidebar 迁移至主框架，移动端/桌面端均可见） */}
           <EndingOverlay />
       <StoryModal />
+      <SettlementSummaryModal />
           {/* 功能解锁浮现提示（v1.0 模块二；无新解锁时返回 null） */}
           <FeatureUnlockToast />
           {/* 通知弹条（v1.0 模块四；右上角 3s；无通知时返回空） */}

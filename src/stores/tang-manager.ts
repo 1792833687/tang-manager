@@ -216,6 +216,7 @@ import type {
   RevealPreferenceResult,
   ShopItem,
   ShopType,
+  GameMessage,
   TangManagerStore,
   TangViewMode,
   TrainingCompletionResult,
@@ -243,6 +244,7 @@ import { addPendingConsequence as addPendingConsequenceSystem, checkPendingConse
 import { checkBehaviorTriggers } from '@/systems/tang-event-consequences';
 import { BEHAVIOR_EVENTS } from '@/config/tang-behavior-events';
 import { POLITICS_DECISIONS, type PoliticsDecision } from '@/config/tang-politics-decisions';
+import { SHOP_ASSETS, shopAssetById, shopAssetModifiers } from '@/config/tang-shop-assets';
 import { canTriggerEvent as canTriggerEventSystem, recordTrigger as recordTriggerSystem, createEventFatigue } from '@/systems/tang-event-fatigue';
 import { YONGLE_EVENTS } from '@/config/tang-events-yongle';
 import { EAST_MARKET_EVENTS } from '@/config/tang-events-east-market';
@@ -539,7 +541,8 @@ function buildReceptionPatch(
 
   // 1. 当前客人更新（收入 × 消费意愿修正；满意度/累计消费累加）
   const incomeEarned = Math.round(input.income * (guest.consumptionModifier ?? 1) * 100) / 100;
-  const satDelta = (input.satisfactionDelta ?? 0) + (input.favorDelta ?? 0);
+  const assetMod = shopAssetModifiers(s.shopAssets ?? []);
+  const satDelta = (input.satisfactionDelta ?? 0) + (input.favorDelta ?? 0) + assetMod.satisfaction;
   const satisfaction = clamp((guest.satisfaction ?? 50) + satDelta, 0, 100);
   const totalSpent = (guest.totalSpent ?? 0) + incomeEarned;
   const currentGuest: Guest = {
@@ -561,7 +564,7 @@ function buildReceptionPatch(
     handledNote: input.handledNote,
   };
   let guests = s.guests.map((g) => (g.id === guest.id ? currentGuest : g));
-  let atmosphere = s.shopAtmosphere ?? 50;
+  let atmosphere = (s.shopAtmosphere ?? 50) + assetMod.atmosphere;
   let guestBook = s.guestBook ?? [];
 
   // 2. 气氛（3.1：夸奖+10 / 投诉-15 / 当场离开-8 / 拼桌双命中+10）
@@ -996,6 +999,10 @@ function npcIntelContextOf(s: TangManagerStore): Parameters<typeof performBuyInf
   | 'maybeRegionEvent'
   | 'purchaseBranch'
   | 'resolvePoliticsDecision'
+  | 'dismissSettlementPopup'
+  | 'addMessage'
+  | 'dismissMessage'
+  | 'purchaseShopAsset'
 > {
   const b = getDifficultyParams('B');
   return {
@@ -1069,6 +1076,9 @@ function npcIntelContextOf(s: TangManagerStore): Parameters<typeof performBuyInf
     politicsStep: 0,
     politicsDone: false,
     currentPoliticsDecision: null,
+    settlementPopupOpen: false,
+    messages: [],
+    shopAssets: [],
     ledger: [],
     todaySettlement: null,
     shopItems: [],
@@ -2153,6 +2163,15 @@ export const useTangManagerStore = create<TangManagerStore>()(
           get().checkBlindAuction();
         }
         get().checkBetOffer();
+        // E 消息代办（2026-08-05）：按清晨状态生成 NPC 待办消息
+        {
+          const cur = get();
+          const mk = (id: string, from: string, content: string): GameMessage => ({ id, from, type: 'errand', content, createdDay: cur.day });
+          const msgs: GameMessage[] = [];
+          if (cur.activeBet && !cur.betAccepted) msgs.push(mk('msg-bet-' + cur.day, '谢七', '谢七又来了，揣着骰子笑嘻嘻地等你下注——去西市赌坊看看？'));
+          if (cur.currentBlindAuction && !cur.blindAuctionResolved) msgs.push(mk('msg-auction-' + cur.day, '账房', '市易务暗标今日开标，别忘了去瞧瞧。'));
+          if (msgs.length > 0) set({ messages: [...(cur.messages ?? []), ...msgs].slice(-20) });
+        }
         // TANG-TRF-001：每日清晨检查逾期预购（违约惩罚分级 + 解除预留）
         get().checkOverdueOrders();
         // v1.0 功能解锁（TANG-POLISH-001 模块二）：每日清晨检查一次
@@ -2162,6 +2181,7 @@ export const useTangManagerStore = create<TangManagerStore>()(
         // 店铺特色产业系统（模块五）：产业每日结算（研发到期/宴席举办/郎中问诊/织工补货）
         get().industryTick(get().day);
         // 地图与事件深化（模块七）：每日检查到期连锁事件（弹窗展示）
+        set({ settlementPopupOpen: false }); // 次日清晨关闭结算弹窗
         get().checkPendingConsequences();
         // 行为/区域事件接入（模块四 4.1 / 模块三）：库房无陈损累计 + 行为触发 + 区域事件
         {
@@ -4777,6 +4797,7 @@ export const useTangManagerStore = create<TangManagerStore>()(
             employees: s.employees ?? [],
             xiaoerSatisfaction: s.xiaoerSatisfaction,
           }),
+          settlementPopupOpen: true, // 体验优化：打烊弹结算面板 + 今日事件
         });
         // 行为触发追踪：连续全亲自接待天数（过度劳累判定；全接待 +1，否则归零）
         {
@@ -6266,6 +6287,38 @@ export const useTangManagerStore = create<TangManagerStore>()(
         }
       },
 
+      dismissSettlementPopup: (): void => {
+        set({ settlementPopupOpen: false });
+      },
+
+      addMessage: (msg): void => {
+        const s = get();
+        set({ messages: [...(s.messages ?? []), msg].slice(-20) });
+      },
+
+      dismissMessage: (messageId): void => {
+        const s = get();
+        set({ messages: (s.messages ?? []).filter((m) => m.id !== messageId) });
+      },
+
+      purchaseShopAsset: (assetId): { ok: boolean; reason?: string } => {
+        const s = get();
+        const asset = shopAssetById(assetId);
+        if (!asset) return { ok: false, reason: '无此物件' };
+        if ((s.shopAssets ?? []).includes(assetId)) return { ok: false, reason: '已购置此物' };
+        if (s.silver < asset.price) return { ok: false, reason: '银两不足（需 ' + asset.price + ' 两）' };
+        const patch: Partial<TangManagerStore> = {
+          shopAssets: [...(s.shopAssets ?? []), assetId],
+          silver: s.silver - asset.price,
+          gold: s.silver - asset.price,
+          ledger: appendLedger(s.ledger, [{ day: s.day, project: '购置' + asset.name, category: '支出' as const, amount: -asset.price }]),
+        };
+        if (asset.effect.reputation) patch.reputation = clamp(s.reputation + asset.effect.reputation, 0, 1000);
+        if (asset.effect.score) patch.score = clamp(s.score + asset.effect.score, 1.0, 5.0);
+        set({ ...patch, eventLog: [...s.eventLog, '[第' + s.day + '日] 购置「' + asset.name + '」' + (asset.feature ? '（' + asset.feature + '）' : '')] });
+        return { ok: true };
+      },
+
       industryOverview: (): IndustryOverview | null => {
         const s = get();
         if (!s.shopType) return null;
@@ -6638,6 +6691,8 @@ export const useTangManagerStore = create<TangManagerStore>()(
         politicsStep: s.politicsStep ?? 0,
         politicsDone: s.politicsDone ?? false,
         currentPoliticsDecision: s.currentPoliticsDecision ?? null,
+        messages: s.messages ?? [],
+        shopAssets: s.shopAssets ?? [],
       }),
       // 兼容字段兜底同步：rehydrate 后 gold←silver / debt←legacyDebt（持久化只存 silver/legacyDebt）
       onRehydrateStorage: () => (state) => {

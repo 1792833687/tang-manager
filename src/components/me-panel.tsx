@@ -23,6 +23,7 @@ import { CreditPanel } from './credit-panel';
 import { BusinessStrategySelector } from './business-strategy-selector';
 import { DangerConfirm } from './danger-confirm';
 import { pushActionFeedback } from './action-feedback';
+import { SHOP_ASSETS } from '@/config/tang-shop-assets';
 import { IndustryPanel } from './tang-manager/industry-panel';
 
 /** 分店序名（天干；shopCount-1 家分店依次命名） */
@@ -261,6 +262,44 @@ export function MePanel(): React.ReactElement {
         >
           购置分店（{formatMoney(branchCost)} 两，可雇佣伙计 +2）
         </button>
+        {/* 店铺配置 · 资产（2026-08-05 体验优化：购置物件带来效果与功能） */}
+        <div className="mt-3 border-t pt-2" style={{ borderColor: ANCIENT.border }}>
+          <div className="mb-1 text-xs font-bold tracking-widest" style={{ color: ANCIENT.secondary }}>店铺配置 · 资产（{formatMoney(state.silver)} 两）</div>
+          <div className="flex max-h-48 flex-col gap-1.5 overflow-y-auto">
+            {SHOP_ASSETS.map((a) => {
+              const owned = (state.shopAssets ?? []).includes(a.id);
+              const afford = state.silver >= a.price;
+              return (
+                <div key={a.id} className="rounded-lg px-2.5 py-1.5" style={{ backgroundColor: owned ? '#F0E6D2' : ANCIENT.background, border: `1px solid ${owned ? ANCIENT.gold : ANCIENT.border}` }}>
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-bold" style={{ color: ANCIENT.text }}>{a.name}</span>
+                    <span className="text-[11px]" style={{ color: ANCIENT.secondary }}>{formatMoney(a.price)} 两</span>
+                  </div>
+                  <p className="mt-0.5 text-[11px] leading-4" style={{ color: ANCIENT.secondary }}>{a.desc}</p>
+                  <div className="mt-1 flex items-center justify-between">
+                    <span className="text-[10px]" style={{ color: ANCIENT.gold }}>{a.feature}</span>
+                    {owned ? (
+                      <span className="text-[10px] font-bold" style={{ color: ANCIENT.primary }}>已购置</span>
+                    ) : (
+                      <button
+                        type="button"
+                        disabled={!afford}
+                        onClick={() => {
+                          const res = state.purchaseShopAsset(a.id);
+                          pushActionFeedback(res.ok ? '已购置「' + a.name + '」' : (res.reason ?? '购置失败'), res.ok ? 'success' : 'warning');
+                        }}
+                        className="rounded px-2 py-0.5 text-[10px] font-bold tracking-widest text-white disabled:cursor-not-allowed disabled:opacity-40"
+                        style={{ backgroundColor: afford ? ANCIENT.primary : ANCIENT.border }}
+                      >
+                        购置
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
         {/* 经营策略（内容深化 TANG-CONT-B 模块六·1）：薄利多销/奇货可居/稳健经营 */}
         <div className="mt-3 border-t pt-2" style={{ borderColor: ANCIENT.border }}>
           <BusinessStrategySelector />

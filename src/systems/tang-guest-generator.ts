@@ -197,7 +197,7 @@ export function generateSingleGuest(
     id: uuidv4(),
     name,
     type,
-    description: pick(GUEST_DESC_TEMPLATES[type], rng),
+    description: pick(GUEST_DESC_TEMPLATES[shopType]?.[type] ?? GUEST_DESC_TEMPLATES.jiulou[type], rng), // 2026-08-05 P0：按店型取需求描述（修布店/药铺客人点菜的文案错配）
     baseConsumption,
     mentalOS: null,
     handled: false,

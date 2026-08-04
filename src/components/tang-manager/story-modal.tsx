@@ -63,6 +63,9 @@ export function StoryModal(): React.ReactElement | null {
             {narrative.npcLine}
           </p>
         )}
+        {narrative.source === 'ai' && (
+          <p className="mt-3 text-right text-[10px] tracking-[0.3em] opacity-40" style={{ color: ANCIENT.gold }}>——天机所拟</p>
+        )}
         {narrative.numbers.length > 0 && (
           <div className="mt-4 flex flex-wrap gap-2">
             {narrative.numbers.map((n, i) => (

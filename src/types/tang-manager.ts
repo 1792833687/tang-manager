@@ -1720,6 +1720,13 @@ export interface TangGameState {
   politicsDone: boolean;
   /** 当前待办政务 */
   currentPoliticsDecision: PoliticsDecision | null;
+  // ---- 体验优化（2026-08-05）：打烊结算弹窗 / 消息代办 / 店铺资产 ----
+  /** 打烊结算弹窗（瞬时 UI，不持久化） */
+  settlementPopupOpen: boolean;
+  /** 消息/代办（NPC 找玩家的待办事项） */
+  messages: GameMessage[];
+  /** 已购店铺资产 id */
+  shopAssets: string[];
   /** 玩家身份（identity 阶段填写后写入） */
   player: PlayerIdentity | null;
   /** 店型（shop-type 阶段选择后写入） */
@@ -2126,6 +2133,17 @@ export interface TangGameState {
 }
 
 /** 掌柜 Store（zustand）行为接口 */
+/** 消息/代办条目（NPC 找玩家的待办事项；2026-08-05 体验优化） */
+export interface GameMessage {
+  id: string;
+  /** 来源（阿昭/苏大娘/谢七/债主/沈听澜/账房等） */
+  from: string;
+  type: 'errand' | 'reminder' | 'info';
+  content: string;
+  /** 是否有可执行动作（点击跳转/采纳） */
+  actionable?: boolean;
+  createdDay: number;
+}
 export interface TangManagerStore extends TangGameState {
   setPhase: (phase: GamePhase) => void;
   /** 切换双视图（operations 日常经营 / dashboard 经营看板） */
@@ -2274,6 +2292,14 @@ export interface TangManagerStore extends TangGameState {
   purchaseBranch: () => { ok: boolean; reason?: string };
   /** 处理一道政务（转政闭环：应用效果 + 步进；5 道尽办 → 权倾朝野） */
   resolvePoliticsDecision: (choiceId: string) => void;
+  /** 关闭打烊结算弹窗 */
+  dismissSettlementPopup: () => void;
+  /** 添加消息/代办 */
+  addMessage: (msg: GameMessage) => void;
+  /** 关闭单条消息 */
+  dismissMessage: (messageId: string) => void;
+  /** 购置店铺资产（扣银 + 应用效果） */
+  purchaseShopAsset: (assetId: string) => { ok: boolean; reason?: string };
   // ---- 地图与事件深化 actions（模块七） ----
   /** 记录事件选择（eventHistory） */
   recordEvent: (eventId: string, choiceId: string, narrative: string) => void;

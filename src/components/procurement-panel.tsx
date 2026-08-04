@@ -70,7 +70,7 @@ export function ProcurementPanel({ onClose }: { onClose: () => void }): React.Re
       return;
     }
     if (quote.totalCost > creditLimit) {
-      setMsg(`单笔赊账上限 ${formatMoney(creditLimit)} 两（信用×2 约束）。`);
+      setMsg(`单笔赊账上限 ${formatMoney(creditLimit)}（信用×2 约束）。`);
       return;
     }
     const r = takeTradeCreditPurchase(quote.totalCost);
@@ -80,7 +80,7 @@ export function ProcurementPanel({ onClose }: { onClose: () => void }): React.Re
     }
     addShopItem({ ...item, id: `credit-${item.id}-${Date.now()}`, stock: qty });
     addLedgerEntry({ day: useTangManagerStore.getState().day, project: `赊购${item.name}`, category: '支出', amount: 0 });
-    setMsg(`赊账进货：${item.name} ×${qty}，赊 ${formatMoney(quote.totalCost)} 两，${formatMoney(Math.max(0, r.creditDueDay ?? 0) - day)} 日后须还（30 天无息）。`);
+    setMsg(`赊账进货：${item.name} ×${qty}，赊 ${formatMoney(quote.totalCost)}，${formatMoney(Math.max(0, r.creditDueDay ?? 0) - day)} 日后须还（30 天无息）。`);
     pushActionFeedback('已赊账进货', 'success');
   };
 

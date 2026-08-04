@@ -55,7 +55,7 @@ export function ShopManagePanel(): React.ReactElement {
                   <span className="font-bold" style={{ color: ANCIENT.text }}>分店 · {BRANCH_LABELS[i] ?? `${i + 1}号`}</span>
                   <span className="rounded px-1.5 py-0.5 text-[10px] text-white" style={{ backgroundColor: ANCIENT.secondary }}>分号</span>
                 </div>
-                <p className="mt-1 text-[11px]" style={{ color: ANCIENT.secondary }}>估值约 {formatMoney(branchValuation)} 两。</p>
+                <p className="mt-1 text-[11px]" style={{ color: ANCIENT.secondary }}>估值约 {formatMoney(branchValuation)}。</p>
                 <button type="button" onClick={() => setSellOpen(true)} className="mt-1.5 rounded px-2.5 py-1 text-[10px] tracking-widest text-white" style={{ backgroundColor: ANCIENT.accent }}>
                   变卖
                 </button>
@@ -69,7 +69,7 @@ export function ShopManagePanel(): React.ReactElement {
           className="mt-2 w-full rounded-lg px-3 py-2 text-xs font-bold tracking-widest disabled:cursor-not-allowed disabled:opacity-40"
           style={{ backgroundColor: ANCIENT.primary, color: '#FFFFFF' }}
         >
-          购置分店（{formatMoney(branchCost)} 两，可雇佣伙计 +2）
+          购置分店（{formatMoney(branchCost)}，可雇佣伙计 +2）
         </button>
         <div className="mt-3 border-t pt-2" style={{ borderColor: ANCIENT.border }}>
           <BusinessStrategySelector />
@@ -85,7 +85,7 @@ export function ShopManagePanel(): React.ReactElement {
               <div key={a.id} className="rounded-lg px-2.5 py-1.5" style={{ backgroundColor: owned ? '#F0E6D2' : ANCIENT.background, border: `1px solid ${owned ? ANCIENT.gold : ANCIENT.border}` }}>
                 <div className="flex items-center justify-between text-xs">
                   <span className="font-bold" style={{ color: ANCIENT.text }}>{a.name}</span>
-                  <span className="text-[11px]" style={{ color: ANCIENT.secondary }}>{formatMoney(a.price)} 两</span>
+                  <span className="text-[11px]" style={{ color: ANCIENT.secondary }}>{formatMoney(a.price)}</span>
                 </div>
                 <p className="mt-0.5 text-[11px]" style={{ color: ANCIENT.secondary }}>{a.desc}</p>
                 <div className="mt-1 flex items-center justify-between">
@@ -107,10 +107,10 @@ export function ShopManagePanel(): React.ReactElement {
       <IndustryPanel />
 
       {sellOpen && (
-        <DangerConfirm title="变卖分店" risk={`店铺估值约${formatMoney(branchValuation)}两。变卖后此店不复存在。`} confirmLabel="确认变卖" onConfirm={handleSellConfirm} onClose={() => setSellOpen(false)} />
+        <DangerConfirm title="变卖分店" risk={`店铺估值约${formatMoney(branchValuation)}。变卖后此店不复存在。`} confirmLabel="确认变卖" onConfirm={handleSellConfirm} onClose={() => setSellOpen(false)} />
       )}
       {buyOpen && (
-        <DangerConfirm title="购置分店" risk={`耗银 ${formatMoney(branchCost)} 两另置一铺，伙计名额 +2。是否继续？`} confirmLabel={`购置（${formatMoney(branchCost)} 两）`} onConfirm={() => { const res = state.purchaseBranch(); pushActionFeedback(res.ok ? '新店开张' : (res.reason ?? '购置失败'), res.ok ? 'success' : 'warning'); setBuyOpen(false); }} onClose={() => setBuyOpen(false)} />
+        <DangerConfirm title="购置分店" risk={`耗银 ${formatMoney(branchCost)}另置一铺，伙计名额 +2。是否继续？`} confirmLabel={`购置（${formatMoney(branchCost)}）`} onConfirm={() => { const res = state.purchaseBranch(); pushActionFeedback(res.ok ? '新店开张' : (res.reason ?? '购置失败'), res.ok ? 'success' : 'warning'); setBuyOpen(false); }} onClose={() => setBuyOpen(false)} />
       )}
     </div>
   );

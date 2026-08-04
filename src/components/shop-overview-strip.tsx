@@ -6,13 +6,13 @@
  */
 'use client';
 import { useState } from 'react';
-import { seasonForDay } from '@/systems/tang-node-prosperity';
+import { seasonForDay, type Season } from '@/systems/tang-node-prosperity';
 import { industryLevel } from '@/config/tang-industry-content';
 import { ModalContainer } from '@/components/modal-container';
 import { useTangManagerStore } from '@/stores/tang-manager';
 import { ANCIENT } from '@/theme/tokens';
 
-const SEASON_LABEL: Record<string, string> = { 春: '春', 夏: '夏', 秋: '秋', 冬: '冬' };
+const SEASON_LABEL: Record<Season, string> = { spring: '春', summer: '夏', autumn: '秋', winter: '冬' };
 
 /** 门面外观随产业等级（成长可视化）：Lv1 街边 → Lv5 天下第一 */
 const FACADE_ICON: Record<number, string> = { 1: '🛖', 2: '🏮', 3: '🏯', 4: '🏛️', 5: '👑' };
@@ -39,7 +39,7 @@ export function ShopOverviewStrip(): React.ReactElement | null {
     { label: '评分', value: s.score.toFixed(1), color: ANCIENT.primary, onClick: () => openDetail('店铺评分', ['当前 ' + s.score.toFixed(2) + ' / 5.0', '评分决定基础收益档位：1.0-1.9 → 5-10两/日，2.0-2.9 → 10-20，3.0-3.9 → 20-35，4.0 以上更高']) },
     { label: '声望', value: String(s.reputation), color: ANCIENT.gold, onClick: () => openDetail('声望', ['当前 ' + s.reputation + ' / 1000', '声望影响 NPC 登场、势力关系与官阶（巍明楼需 ≥700）']) },
     { label: '气氛', value: String(s.shopAtmosphere ?? 50), color: ANCIENT.secondary, onClick: () => openDetail('店内气氛', ['当前 ' + (s.shopAtmosphere ?? 50) + ' / 100', '夸奖 +10、投诉 -15；影响客人与情绪传染']) },
-    { label: '季节', value: SEASON_LABEL[season] ?? season, color: ANCIENT.border, onClick: () => openDetail('时令', ['当前时令：' + season, '季节影响地图色调与部分事件']) },
+    { label: '季节', value: SEASON_LABEL[season] ?? season, color: ANCIENT.border, onClick: () => openDetail('时令', ['当前时令：' + (SEASON_LABEL[season] ?? season), '季节影响地图色调与部分事件']) },
     { label: '门面', value: FACADE_ICON[lv.level] + lv.name, color: ANCIENT.accent, onClick: goShop },
     { label: '资产', value: String((s.shopAssets ?? []).length), color: ANCIENT.border, onClick: goShop },
   ];

@@ -4799,7 +4799,6 @@ export const useTangManagerStore = create<TangManagerStore>()(
             employees: s.employees ?? [],
             xiaoerSatisfaction: s.xiaoerSatisfaction,
           }),
-          settlementPopupOpen: true, // 体验优化：打烊弹结算面板 + 今日事件
         });
         // 行为触发追踪：连续全亲自接待天数（过度劳累判定；全接待 +1，否则归零）
         {
@@ -4808,6 +4807,10 @@ export const useTangManagerStore = create<TangManagerStore>()(
           set({ consecutiveFullReceptionDays: allHandled ? (s.consecutiveFullReceptionDays ?? 0) + 1 : 0 });
         }
         get().startNewDay();
+        // 修复（2026-08-06）：startNewDay 清晨钩子会重置 settlementPopupOpen=false 且 todaySettlement=null，
+        // 若在其前置开/只置开弹窗，打烊结算面板会立刻被关闭或因 settle=null 不渲染、永不显示。
+        // 须在 startNewDay 之后同时恢复弹窗开关与结算数据。
+        set({ settlementPopupOpen: true, todaySettlement: { ...result.settlement, netIncome } });
         // 阶段推进（1.1）：settleDay 后判定；seized/破产等非 playing 阶段不推进
         const after = get();
         if (after.phase === 'playing') {

@@ -214,3 +214,25 @@
 **验收**：tsc 零错误 → 全量 **1137 用例全绿**（91 文件）→ build 静态导出成功 → 已推送上线（main @ `f04f9469`，gh-pages @ `e45ee634`）→ Playwright 真机冒烟：入口标题正确、开局全流程（性别/年龄/名字 → 开店方向 → 难度 A/B/C → 开张）可走通、**0 控制台错误**。
 
 **源项目零修改复核**：本轮工具脚本曾误在源项目（游戏开发）执行，已逐字回滚（tang-tutorial-content.ts / tang-tutorial.test.ts 与 tang-manager HEAD 完全一致，store 测试无指纹残留）。
+
+
+---
+
+## 体验体检 + 修复（2026-08-06 · game-playtest / ui-styling / frontend-ui-engineering）
+
+**背景**：按用户要求从 GitHub 检索并安装 4 个游戏 UI/前端优化 skill（addyoosmani/agent-skills 的 frontend-ui-engineering、performance-optimization；nextlevelbuilder/ui-ux-pro-max-skill 的 design-system、ui-styling），并以 game-playtest 方法论对线上/本地游戏做结构化体检。
+
+**体检发现并修复 3 个真实问题**：
+
+| # | 问题 | 根因 | 修复 |
+|---|---|---|---|
+| 1 | 概览条「季节」显示英文 spring（古风 UI 英文泄漏） | shop-overview-strip 的 SEASON_LABEL 键用中文（春/夏/秋/冬），而 seasonForDay 返回英文枚举（spring/summer/autumn/winter） | SEASON_LABEL 改为 Record<Season,string> 英文键 → 中文值；详情弹窗同步 |
+| 2 | 13 处「X两 两」重复单位（如购置分店 800两 两、描金招牌 120两 两） | formatMoney() 已带「两」后缀，模板又拼一次「 两」 | 4 个组件（afternoon-actions×4 / bank-loan-section×1 / procurement-panel×2 / shop-manage-panel×6）移除重复「两」 |
+| 3 | 「打烊结算面板 + 今日事件」**从未显示**（用户上轮明确要求的功能 = 死代码） | settleDay 内 settlementPopupOpen:true 后立即调用 startNewDay()，其清晨钩子把 settlementPopupOpen 置 false 且 todaySettlement 置 null → 弹窗要么被关、要么因 settle=null 不渲染 | settleDay 在 startNewDay 之后同时恢复 settlementPopupOpen:true + todaySettlement；新增 store 测试（1138 全绿） |
+
+**验证**：tsc 零错误 → 全量 1138 用例全绿（91 文件）→ build 静态导出成功 → Playwright 本地复验：季节显示「春」、无「两 两」、打烊后结算面板正常弹出（基础收益/客单消费/支出/净收益 + 今日之事 + 阿昭禀报），0 控制台错误。
+
+**skill 安装清单**（Codex skills，用户级 GITHUB_PAT_TOKEN 已配置）：
+- frontend-ui-engineering（addyosmani/agent-skills）
+- performance-optimization（addyosmani/agent-skills）
+- design-system、ui-styling（nextlevelbuilder/ui-ux-pro-max-skill）

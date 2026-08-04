@@ -42,7 +42,7 @@ export function BankLoanSection({ onNote }: { onNote: (text: string) => void }):
         {revolvingOffer && (
           <div className="rounded px-3 py-2 text-xs" style={{ backgroundColor: ANCIENT.background, border: `1px solid ${ANCIENT.gold}` }}>
             <div style={{ color: ANCIENT.text }}>
-              钱庄掌柜捋着胡子：「掌柜的信用好，本庄愿再借 {formatMoney(revolvingOffer.amount)} 两，月息 {(revolvingOffer.interestRate * 100).toFixed(0)}%。」
+              钱庄掌柜捋着胡子：「掌柜的信用好，本庄愿再借 {formatMoney(revolvingOffer.amount)}，月息 {(revolvingOffer.interestRate * 100).toFixed(0)}%。」
             </div>
             <div className="mt-2 flex gap-2">
               <ActionButton

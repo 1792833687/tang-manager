@@ -477,3 +477,16 @@ describe('Step 5b · 里程碑引导接线（首次雇佣/排班）', () => {
     expect(useTangManagerStore.getState().currentTutorial).toBe('FIRST_SCHEDULE');
   });
 });
+describe('Step 5b · 打烊结算弹窗（settleDay 后置开）', () => {
+  it('settleDay 打烊后 settlementPopupOpen=true，结算面板可显示', () => {
+    const store = useTangManagerStore.getState();
+    store.initByDifficulty('B');
+    expect(useTangManagerStore.getState().settlementPopupOpen).toBe(false);
+    store.settleDay();
+    expect(useTangManagerStore.getState().settlementPopupOpen).toBe(true);
+    expect(useTangManagerStore.getState().todaySettlement).not.toBeNull(); // 结算数据在 startNewDay 后保留（弹窗可渲染）
+    // dismiss 后可关闭
+    useTangManagerStore.getState().dismissSettlementPopup();
+    expect(useTangManagerStore.getState().settlementPopupOpen).toBe(false);
+  });
+});

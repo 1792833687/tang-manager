@@ -85,7 +85,7 @@ function PatrolHazardCard({
   let choices: Array<{ choice: string; label: string; warn?: boolean; cost?: number }> = [];
   if (hazard.kind === 'repair') {
     choices = [
-      { choice: 'fix', label: `立即修缮（${formatMoney(hazard.repairCost ?? 0)} 两）`, cost: hazard.repairCost },
+      { choice: 'fix', label: `立即修缮（${formatMoney(hazard.repairCost ?? 0)}）`, cost: hazard.repairCost },
       { choice: 'delay', label: '暂缓（十日内或坍塌）', warn: true },
     ];
   } else if (hazard.kind === 'slack') {
@@ -95,8 +95,8 @@ function PatrolHazardCard({
     ];
   } else {
     choices = [
-      { choice: 'lock', label: `加固门锁（${formatMoney(hazard.lockCost ?? 0)} 两）`, cost: hazard.lockCost },
-      { choice: 'guard', label: `雇护卫看顾（${formatMoney(hazard.guardCost ?? 0)} 两）`, cost: hazard.guardCost },
+      { choice: 'lock', label: `加固门锁（${formatMoney(hazard.lockCost ?? 0)}）`, cost: hazard.lockCost },
+      { choice: 'guard', label: `雇护卫看顾（${formatMoney(hazard.guardCost ?? 0)}）`, cost: hazard.guardCost },
     ];
   }
   return (
@@ -341,7 +341,7 @@ export function AfternoonActions(): React.ReactElement | null {
         <div className="mt-3 flex items-center justify-between gap-2 rounded-lg px-3 py-2" style={{ backgroundColor: ANCIENT.card, border: `1px solid ${ANCIENT.gold}` }}>
           <div className="min-w-0 flex-1 text-xs leading-relaxed" style={{ color: ANCIENT.text }}>
             <span className="font-bold" style={{ color: ANCIENT.gold }}>今日捡漏：</span>
-            {strollBargain.itemName} 七折 {formatMoney(strollBargain.price)} 两（限今日）
+            {strollBargain.itemName} 七折 {formatMoney(strollBargain.price)}（限今日）
           </div>
           <button
             type="button"

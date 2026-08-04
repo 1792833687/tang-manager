@@ -5793,6 +5793,50 @@ export const useTangManagerStore = create<TangManagerStore>()(
         if (s.phase !== 'playing') return;
         const guest = result.guestId ? s.guests.find((g) => g.id === result.guestId) : s.guests[s.currentGuestIndex];
         if (!guest || guest.handled) return;
+
+        // P1 修复（2026-08-05）：对话式接待结算接入接待策略（delegate/priority → 伙计代劳）
+        const strategy = s.receptionStrategy ?? 'all';
+        const strat = applyReceptionStrategy(guest, strategy, rng);
+        if (strat.mode === 'delegated') {
+          const delegatedIncome = strat.delegatedIncome ?? 0;
+          const delegatedPatch = buildReceptionPatch(
+            s,
+            { guestId: guest.id, income: delegatedIncome, energyConsumed: 0, review: 'good', handledNote: '伙计代劳，入账 ' + delegatedIncome + ' 两' },
+            rng
+          );
+          set({ ...delegatedPatch, storyNarrative: { title: '伙计代劳', body: '（伙计替你招呼了这位客官，成单入账。你歇在柜台后，听了一耳朵热闹。）', numbers: ['入账 ' + Math.round(delegatedIncome) + ' 两'], source: 'template' } });
+          if (guest.type === 'big_order') {
+            set({ weeklyTaskProgress: addWeeklyProgressSystem(get().weeklyTaskProgress, 'week-big-orders', 1) });
+          }
+          return;
+        }
+
+        // P1 修复：接入大单预购（big_order 20% 与现货互斥）
+        if (result.ok && guest.type === 'big_order') {
+          const factionRelationships = Object.fromEntries((s.factions ?? []).map((f) => [f.id, f.relationship]));
+          const preorder = checkPreOrderTriggerSystem(
+            guest,
+            { shopType: s.shopType ?? 'jiulou', day: s.day, preOrders: s.preOrders ?? [], shopItems: s.shopItems ?? [], factionRelationships },
+            rng
+          );
+          if (preorder) {
+            const offerPatch = buildReceptionPatch(
+              s,
+              { guestId: guest.id, income: 0, energyConsumed: 0, review: 'good', handledNote: '大客下订预购「' + preorder.items.map((it) => it.itemName).join('、') + '」' },
+              rng
+            );
+            set({
+              ...offerPatch,
+              preOrders: [...(s.preOrders ?? []), preorder],
+              storyNarrative: { title: '大客预购', body: '（' + guest.name + '相中了货色，爽快下了定金——' + preorder.items.map((it) => it.itemName).join('、') + '，约定日后取货。）', numbers: ['预购订单已登记'], source: 'template' },
+            });
+            if (guest.type === 'big_order') {
+              set({ weeklyTaskProgress: addWeeklyProgressSystem(get().weeklyTaskProgress, 'week-big-orders', 1) });
+            }
+            return;
+          }
+        }
+
         const patch = buildReceptionPatch(s, {
           guestId: guest.id,
           income: result.income,

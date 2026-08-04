@@ -332,3 +332,54 @@ describe('模块三：信用破产阻止借贷（边缘场景）', () => {
     expect(usury?.ok).toBe(true);
   });
 });
+
+describe('completeDialogueReception 接线（P1 修复：策略/预购接入）', () => {
+  const baseGuest = { id: 'g-dlg', name: '张客官', type: 'normal' as const, description: '看看货', baseConsumption: 5, handled: false };
+  const makeResult = (overrides: Record<string, unknown> = {}) => ({
+    ok: true,
+    shop: 'jiulou' as const,
+    income: 12,
+    incomeMultiplier: 1,
+    satisfactionDelta: 5,
+    favorDelta: 0,
+    energyConsumed: 5,
+    review: 'good' as const,
+    narrative: '（测试叙事）',
+    summary: ['入账 12 两'],
+    flags: {},
+    guestId: 'g-dlg',
+    ...overrides,
+  });
+  it('正常成交：客人已处理、银两入账、故事弹窗', () => {
+    const st = useTangManagerStore.getState();
+    st.initByDifficulty('B');
+    useTangManagerStore.setState({ guests: [{ ...baseGuest }], shopItems: [], phase: 'playing' });
+    useTangManagerStore.getState().completeDialogueReception(makeResult(), () => 0.5);
+    const after = useTangManagerStore.getState();
+    expect(after.guests[0]!.handled).toBe(true);
+    expect(after.guests[0]!.incomeEarned).toBe(12); // 收入记入本单，结算统一入账
+    expect(after.storyNarrative).not.toBeNull();
+  });
+  it('大单预购：big_order + rng=0 → 转预购、现货收入 0', () => {
+    const st = useTangManagerStore.getState();
+    st.initByDifficulty('B');
+    useTangManagerStore.setState({
+      guests: [{ ...baseGuest, id: 'g-big', type: 'big_order', baseConsumption: 12 }],
+      shopItems: [{ id: 'i1', name: '丝绸', price: 20, cost: 10, stock: 10, category: '布匹' }],
+      phase: 'playing',
+    });
+    useTangManagerStore.getState().completeDialogueReception(makeResult({ guestId: 'g-big', income: 30 }), () => 0);
+    const after = useTangManagerStore.getState();
+    expect(after.preOrders.length).toBeGreaterThan(0);
+    expect(after.guests.find((g) => g.id === 'g-big')!.handled).toBe(true);
+  });
+  it('接待策略 delegate：伙计代劳、故事弹窗「伙计代劳」', () => {
+    const st = useTangManagerStore.getState();
+    st.initByDifficulty('B');
+    useTangManagerStore.setState({ guests: [{ ...baseGuest, id: 'g-dlg2' }], shopItems: [], phase: 'playing', receptionStrategy: 'delegate' });
+    useTangManagerStore.getState().completeDialogueReception(makeResult({ guestId: 'g-dlg2' }), () => 0.5);
+    const after = useTangManagerStore.getState();
+    expect(after.guests.find((g) => g.id === 'g-dlg2')!.handled).toBe(true);
+    expect(after.storyNarrative?.title).toBe('伙计代劳');
+  });
+});

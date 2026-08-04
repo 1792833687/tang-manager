@@ -11,7 +11,6 @@ import { buildStoryNarrativeFallback } from '@/config/tang-story-templates';
 import { useTangManagerStore } from '@/stores/tang-manager';
 import { ANCIENT } from '@/theme/tokens';
 import type { GameEventEffect, NarrationContext } from '@/types/tang-manager';
-import { AiNarration } from './ai-narration';
 import { AncientCard } from './ancient-card';
 import { NpcPortrait, type NpcId } from './npc-portrait';
 
@@ -45,7 +44,6 @@ export function EventPanel(): React.ReactElement | null {
   const resolveEventChoice = useTangManagerStore((s) => s.resolveEventChoice);
   const showStoryNarrative = useTangManagerStore((s) => s.showStoryNarrative);
   const [resolved, setResolved] = useState<{ title: string; consequence: string; context: NarrationContext } | null>(null);
-  const [narrationVisible, setNarrationVisible] = useState(true);
 
   const event = pendingEvents[0] ?? null;
 
@@ -60,9 +58,7 @@ export function EventPanel(): React.ReactElement | null {
         <p className="text-sm leading-relaxed" style={{ color: ANCIENT.text }}>
           {resolved.consequence}
         </p>
-        {narrationVisible && (
-          <AiNarration context={resolved.context} onClose={() => setNarrationVisible(false)} />
-        )}
+
         <div className="mt-4 flex justify-end">
           <button
             type="button"
@@ -92,7 +88,6 @@ export function EventPanel(): React.ReactElement | null {
     // 构建叙事上下文（resolveEventChoice 已同步应用变更；AI 只读，不回写）
     const s = useTangManagerStore.getState();
     const shopType = s.shopType ?? 'jiulou';
-    setNarrationVisible(true);
     setResolved({
       title: event.title,
       consequence: choice.consequence,

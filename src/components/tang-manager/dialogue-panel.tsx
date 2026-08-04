@@ -147,6 +147,8 @@ export function DialoguePanel({ guest }: { guest: Guest }): React.ReactElement {
   const appendDialogue = useTangManagerStore((s) => s.appendDialogue);
   const clearDialogue = useTangManagerStore((s) => s.clearDialogue);
   const completeDialogueReception = useTangManagerStore((s) => s.completeDialogueReception);
+  const revealGuestPreference = useTangManagerStore((s) => s.revealGuestPreference);
+  const insightRemaining = useTangManagerStore((s) => s.insightRemaining);
 
   const [state, setState] = useState<DialogueState | null>(null);
   const [typed, setTyped] = useState('');
@@ -421,7 +423,23 @@ export function DialoguePanel({ guest }: { guest: Guest }): React.ReactElement {
                 setAdvice={setAdvice}
               />
             )}
-            <Btn label="呈上方案" onClick={submitPlan} disabled={busy || (shopType === 'jiulou' && dishIds.length === 0)} />
+            <div className="flex items-center gap-2">
+              <Btn
+                label={'通晓人心（剩余' + insightRemaining + '）'}
+                onClick={() => {
+                  const res = revealGuestPreference(guest.id);
+                  if (res?.revealed) {
+                    const pref = res.revealed;
+                    const msg = '（你凝神细察，窥得这位客官心中所好——偏好「' + pref.value + '」。）';
+                    setState((prev) => (prev ? pushDialogueMessage({ ...prev, preferenceRevealed: true }, { role: 'system', content: msg, source: 'template', phase: 'recommend' }) : prev));
+                    setTyped('');
+                  }
+                }}
+                disabled={insightRemaining <= 0 || guest.preferenceRevealed}
+                color={ANCIENT.gold}
+              />
+              <Btn label="呈上方案" onClick={submitPlan} disabled={busy || (shopType === 'jiulou' && dishIds.length === 0)} />
+            </div>
           </div>
         )}
 

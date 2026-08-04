@@ -42,6 +42,11 @@ jobs:
           NEXT_TELEMETRY_DISABLED: '1'
           # 独立项目：根路径部署，不注入 NEXT_PUBLIC_BASE_PATH（无子路径 basePath）
 
+      # 关键修复（2026-08-04）：GitHub Pages 默认 Jekyll 构建剔除 _ 开头目录（_next/）→ JS/CSS 404；
+      # 必须保证 out/ 根有 .nojekyll（public/.nojekyll 也会被 next build 复制，这里双保险）
+      - name: Ensure .nojekyll (bypass Jekyll)
+        run: touch out/.nojekyll
+
       - name: Deploy out/ to gh-pages
         uses: JamesIves/github-pages-deploy-action@v4
         with:

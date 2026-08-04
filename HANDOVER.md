@@ -60,6 +60,7 @@
 - 源仓库 watchparty（1792833687/watchparty）：gh-pages @ `65fa97e5`（v1.0 + network-first sw.js），线上 https://1792833687.github.io/watchparty/scripts/tang-manager
 - **新独立仓库**：1792833687/tang-manager（public）已创建并上线 —— main @ `6526db1e`（本机 github.com 直连被阻断，走 github-api-push.mjs API 推送）；deploy.yml 已验证（Actions #30889723894 success：typecheck→test→build→JamesIves 推 gh-pages）
 - **线上地址**：https://1792833687.github.io/tang-manager/（gh-pages @ `9504d0f`，2026-08-04 上线；`/` 直达唐朝掌柜，`/scripts` 入口页，sw.js network-first v7.0.0，图片/资源 200 验证通过）
+- **关键修复（上线后 2026-08-04）**：GitHub Pages 默认 Jekyll 构建剔除 _ 开头目录（_next/）→ 线上 JS/CSS 全部 404、游戏无法启动；已加 public/.nojekyll + deploy.yml 	ouch out/.nojekyll 双保险，gh-pages 分支同步补 .nojekyll 并重建
 
 ### EdgeOne Makers（备选）
 - 项目名 tang-shopkeeper：https://tang-shopkeeper-4tgvwhw2.edgeone.cool/scripts/tang-manager?eo_token=...（token 有时效，过期需重新部署）

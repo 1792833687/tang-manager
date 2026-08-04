@@ -1,6 +1,6 @@
-/* v7.0.0 (v1.0 release fix): network-first 缓存 — 在线永远最新，离线降级缓存（修复 F5 命中旧缓存） */
+/* v8.0.0 (v1.1 fix): network-first 缓存 — 在线永远最新，离线降级缓存（版本号提升以清空旧缓存，规避部署过渡期新旧资源混用） */
 /* eslint-disable */
-const CACHE = 'tang-v7-0-0';
+const CACHE = 'tang-v8-0-0';
 const BASE = self.__WB_BASE_PATH__ || '';
 
 self.addEventListener('install', (event) => {

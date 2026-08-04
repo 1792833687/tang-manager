@@ -9,14 +9,15 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { ANCIENT } from '@/theme/tokens';
+import { withBase } from '@/lib/utils/base-path';
 
 /** 9 张加载图路径（与 /public/images/loading/loading-XX.webp 对应） */
 const LOADING_IMAGES: readonly string[] = Array.from(
   { length: 9 },
-  (_, i) => `/images/loading/loading-${String(i + 1).padStart(2, '0')}.webp`,
+  (_, i) => withBase(`/images/loading/loading-${String(i + 1).padStart(2, '0')}.webp`),
 );
 /** SVG 占位兜底（存在同目录同名 .svg） */
-const FALLBACK_SVG = '/images/loading/loading-01.svg';
+const FALLBACK_SVG = withBase('/images/loading/loading-01.svg');
 /** 逐字淡入口号 */
 const SLOGAN = '长安万里，始于足下...';
 

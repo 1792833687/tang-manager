@@ -34,6 +34,7 @@ import { DifficultyPanel } from '@/components/difficulty-panel';
 import { EndingOverlay } from '@/components/ending-overlay';
 import { StoryModal } from '@/components/tang-manager/story-modal';
 import { StaffReminderHost } from '@/components/tang-manager/staff-reminder-host';
+import { GameErrorBoundary } from '@/components/game-error-boundary';
 import { EventPanel } from '@/components/event-panel';
 import { FactionPanel } from '@/components/faction-panel';
 import { IdentityPanel } from '@/components/identity-panel';
@@ -159,6 +160,7 @@ function OperationsStatusStrip(): React.ReactElement {  const guests = useTangMa
     ? '今日已毕，可打烊'
     : `客至 ${Math.min(currentGuestIndex + 1, guests.length)} / ${guests.length}`;
   return (
+    <GameErrorBoundary>
     <>
       <div className="grid grid-cols-4 gap-2 text-center text-xs md:text-sm">
         <div className="rounded-lg px-2 py-1.5" style={{ backgroundColor: ANCIENT.card, border: `1px solid ${allHandled ? ANCIENT.gold : ANCIENT.border}`, color: allHandled ? ANCIENT.accent : ANCIENT.text }}>
@@ -182,6 +184,7 @@ function OperationsStatusStrip(): React.ReactElement {  const guests = useTangMa
       </div>
       <ApiConfigModal open={tianjiOpen} onClose={() => setTianjiOpen(false)} />
     </>
+    </GameErrorBoundary>
   );
 }
 
@@ -298,6 +301,7 @@ export default function TangManagerPage(): React.ReactElement {
   const shopName = shopType !== null ? shopDisplayName(shopType) : '陆记';
 
   return (
+    <GameErrorBoundary>
     <>
       {/* 初始加载画面：未挂载显示（visible=true），挂载后自动淡出 1s 卸载（false）
           注意 visible 语义：true=显示加载中 / false=淡出——与 mounted 取反 */}
@@ -380,5 +384,6 @@ export default function TangManagerPage(): React.ReactElement {
         </div>
       )}
     </>
+    </GameErrorBoundary>
   );
 }

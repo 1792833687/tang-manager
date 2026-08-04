@@ -40,7 +40,9 @@ jobs:
         run: npm run build
         env:
           NEXT_TELEMETRY_DISABLED: '1'
-          # 独立项目：根路径部署，不注入 NEXT_PUBLIC_BASE_PATH（无子路径 basePath）
+          NEXT_PUBLIC_BASE_PATH: '/tang-manager'
+          # 关键：GitHub Pages 项目站点在 /tang-manager/ 子路径——必须注入 basePath，
+          # 否则 HTML 引用根路径 /_next/... 全部 404（JS 不加载 → 开始界面进不去/美术缺失/UI 乱）
 
       # 关键修复（2026-08-04）：GitHub Pages 默认 Jekyll 构建剔除 _ 开头目录（_next/）→ JS/CSS 404；
       # 必须保证 out/ 根有 .nojekyll（public/.nojekyll 也会被 next build 复制，这里双保险）

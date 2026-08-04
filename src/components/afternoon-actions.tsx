@@ -20,6 +20,7 @@ import { ANCIENT } from '@/theme/tokens';
 import type { ActionResult, EmployeeCandidate, PatrolHazard } from '@/types/tang-manager';
 import { formatMoney } from '@/lib/format-money';
 import { AncientCard } from './ancient-card';
+import { ModalContainer } from './modal-container';
 import { pushActionFeedback } from './action-feedback';
 
 /** 行动图标（emoji，古风） */
@@ -164,6 +165,7 @@ export function AfternoonActions(): React.ReactElement | null {
   const [lastResult, setLastResult] = useState<ActionResult | null>(null);
   const [candidates, setCandidates] = useState<EmployeeCandidate[] | null>(null);
   const [visitNpcOpen, setVisitNpcOpen] = useState(false);
+  const [confirm, setConfirm] = useState<{ id: string; label: string; description: string; energyCost: number } | null>(null);
   const [hiredIds, setHiredIds] = useState<string[]>([]);
 
   if (phase !== 'playing') {
@@ -283,11 +285,7 @@ export function AfternoonActions(): React.ReactElement | null {
             label={`${opt.label}${opt.energyCost > 0 ? `（-${opt.energyCost} 精力）` : `（+${-opt.energyCost} 精力）`}`}
             sub={opt.description}
             onClick={() => {
-              if (opt.id === 'visit_npc') {
-                setVisitNpcOpen((v) => !v);
-                return;
-              }
-              runAction(opt.id);
+              setConfirm({ id: opt.id, label: opt.label, description: opt.description, energyCost: opt.energyCost });
             }}
             disabled={opt.disabled}
             reason={opt.disabledReason}
@@ -299,7 +297,7 @@ export function AfternoonActions(): React.ReactElement | null {
             icon={ACTION_ICON.explore_unknown_region ?? '🗺️'}
             label={`探访未知区域（-${EXPLORE_ENERGY_COST} 精力）`}
             sub={`专挑平日不常去的巷陌走走，兴许能探明一两处新去处（尚有 ${hiddenRegionCount} 处迷雾未散）。`}
-            onClick={runExplore}
+            onClick={() => setConfirm({ id: 'explore_unknown_region', label: '探访未知区域', description: '专挑平日不常去的巷陌走走，兴许能探明一两处新去处。', energyCost: EXPLORE_ENERGY_COST })}
             disabled={!!exploreDisabledReason}
             reason={exploreDisabledReason}
           />
@@ -407,6 +405,29 @@ export function AfternoonActions(): React.ReactElement | null {
             </div>
           )}
         </div>
+      )}
+      {confirm && (
+        <ModalContainer title={confirm.label} onClose={() => setConfirm(null)} showConfirm={false}>
+          <div className="flex flex-col gap-3">
+            <p className="text-sm leading-6" style={{ color: ANCIENT.text }}>{confirm.description}</p>
+            <div className="rounded-lg px-3 py-2 text-xs" style={{ backgroundColor: ANCIENT.background, border: `1px solid ${ANCIENT.border}` }}>
+              <div style={{ color: ANCIENT.secondary }}>
+                精力：{confirm.energyCost > 0 ? `-${confirm.energyCost}` : `+${-confirm.energyCost}`}
+                {confirm.id === 'visit_npc' ? ' · 拜访需选人，行动后展开名单' : ''}
+              </div>
+            </div>
+            <div className="flex justify-end gap-2">
+              <button type="button" onClick={() => setConfirm(null)} className="rounded-lg px-5 py-2 text-xs font-bold" style={{ backgroundColor: ANCIENT.border, color: '#FFF' }}>再想想</button>
+              <button type="button" onClick={() => {
+                const c = confirm;
+                setConfirm(null);
+                if (c.id === 'visit_npc') { setVisitNpcOpen(true); return; }
+                if (c.id === 'explore_unknown_region') { runExplore(); return; }
+                runAction(c.id);
+              }} className="rounded-lg px-5 py-2 text-xs font-bold" style={{ backgroundColor: ANCIENT.primary, color: '#FFF' }}>行动</button>
+            </div>
+          </div>
+        </ModalContainer>
       )}
     </AncientCard>
   );

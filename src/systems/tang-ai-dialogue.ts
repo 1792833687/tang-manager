@@ -15,6 +15,7 @@ import { shopDisplayName } from '@/config/tang-shop-types';
 import { GUEST_TYPE_LABEL } from '@/config/tang-guest-content';
 import { pickTemplate } from '@/config/tang-dialogue-templates';
 import { pickDialogueOptionSet, type DialogueOptionSetTemplate } from '@/config/tang-dialogue-fallbacks';
+import { pickArrivalTemplate } from '@/config/tang-dialogue-fallbacks';
 import type { Guest, ShopType } from '@/types/tang-manager';
 
 /** AI 返回的需求分析 + 选项（规格书 1.2） */
@@ -41,6 +42,10 @@ export interface AIGuestResponse {
 }
 
 export const AI_DIALOGUE_TIMEOUT = 8000;
+
+const ARRIVAL_SYSTEM_PROMPT =
+  '你是一位唐朝说书人，为一位客人走进店铺的场景写一小段旁白（2-4 句，古风市井口吻）。用括号包裹旁白，末尾接一句客人说的话。只输出旁白与客人一句话，不要多余文字。';
+
 
 const OPTIONS_SYSTEM_PROMPT =
   '你是一位唐朝店铺的掌柜，正在接待一位客人。请分析客人真实需求并给出 3 个对话选项（品质/性价比/投其所好三种策略，价格与成交率要有明显差异）。只返回严格 JSON，不要任何额外文字。JSON 格式：{"guestAnalysis":"分析(1-2句)","options":[{"text":"掌柜对话","strategy":"策略","estimatedPrice":数字,"estimatedSuccessRate":0-100数字,"risk":"风险(1句)"}]}';
@@ -177,6 +182,37 @@ export async function generateDialogueOptions(
 }
 
 /** 生成客人回应（规格书 1.1/1.3） */
+
+/** 客人到店小场景（AI 叙事优先；不可用/超时 → 模板兜底；规格书：客人到店描述弹窗） */
+export async function generateGuestArrival(
+  guest: Pick<Guest, 'name' | 'type' | 'description'> | Guest,
+  shopType: ShopType,
+  opts: { enabled?: boolean } = {}
+): Promise<{ content: string; source: 'ai' | 'template' }> {
+  const enabled = opts.enabled ?? true;
+  const fallbackContent = pickArrivalTemplate(shopType).replace('{guestName}', guest.name).replace('{description}', guest.description ?? '');
+  if (!enabled || !(await aiAvailable())) {
+    return { content: fallbackContent, source: 'template' };
+  }
+  const tianji = await loadTangAiConfig();
+  const model = tianji?.configured && tianji?.apiKey ? tianji.model : 'openai/gpt-4o-mini';
+  const apiKey = tianji?.configured && tianji?.apiKey ? tianji.apiKey : (getStoredApiKey() ?? '');
+  const user = `客人：${guest.name}（${GUEST_TYPE_LABEL[guest.type] ?? '普通'}）。需求：${guest.description ?? ''}。店铺：${shopDisplayName(shopType)}。`;
+  const messages: OpenRouterMessage[] = [
+    { role: 'system', content: ARRIVAL_SYSTEM_PROMPT },
+    { role: 'user', content: user },
+  ];
+  const config: LLMConfig = { model, temperature: 0.9, maxTokens: 200, streamTimeout: AI_DIALOGUE_TIMEOUT, enableTypingEffect: false };
+  let acc = '';
+  try {
+    await new OpenRouterClient({ apiKey }).streamChatCompletion(config, messages, (c) => { acc += c; });
+    const text = acc.trim();
+    return text.length > 0 ? { content: text, source: 'ai' } : { content: fallbackContent, source: 'template' };
+  } catch {
+    return { content: fallbackContent, source: 'template' };
+  }
+}
+
 export async function generateGuestResponse(
   guest: Guest,
   playerChoice: string,

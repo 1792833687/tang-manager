@@ -5,6 +5,39 @@
  */
 import type { ShopType } from '@/types/tang-manager';
 
+/** 客人到店小场景（AI 叙事兜底；每店 5 套；占位 {guestName}/{description} 由上层插值） */
+export const ARRIVAL_TEMPLATES: Record<ShopType, string[]> = {
+  jiulou: [
+    '（{guestName}推门而入，风尘仆仆，目光在堂间一扫，径直寻了张干净桌子坐下。）{description}',
+    '（{guestName}迈过门槛，袖口还沾着外头的风沙。店里的热气扑面，他眉眼舒展了几分。）{description}',
+    '（{guestName}在门口驻足片刻，打量了堂间菜色与座次，才缓步进来。）{description}',
+    '（{guestName}大踏步进来，嗓门洪亮，先招呼了句好，才落座点单。）{description}',
+    '（{guestName}进门时正逢后厨飘香，他吸了吸鼻子，脸上浮起笑意。）{description}',
+  ],
+  buzhuang: [
+    '（{guestName}掀帘而入，手里还攥着一匹从别处看过的料子样角，进门便往柜台前凑。）{description}',
+    '（{guestName}站在门口，先打量了架上各色料子，才朝掌柜点了点头。）{description}',
+    '（{guestName}进门时带着一身风霜，摩挲着衣料，似在盘算着什么。）{description}',
+    '（{guestName}轻叩柜台，客客气气地问了声好，才道出来意。）{description}',
+    '（{guestName}进门后先瞧了瞧时兴的花色，眼里有了计较，才开口。）{description}',
+  ],
+  yaopu: [
+    '（{guestName}扶着门框进来，面色微白，说话声气也比寻常弱了几分。）{description}',
+    '（{guestName}进门时轻轻咳了两声，在柜台前站定，似在斟酌如何开口。）{description}',
+    '（{guestName}由人搀着进了店，袖中露出一截包扎过的旧伤。）{description}',
+    '（{guestName}进门便往药柜方向看了一眼，神色间带着几分急切。）{description}',
+    '（{guestName}在门口略站了站，嗅着满室的药香，才缓缓道明来意。）{description}',
+  ],
+};
+
+/** 随机抽一条到店描述（纯函数；rng 可注入） */
+export function pickArrivalTemplate(shopType: ShopType, rng: () => number = Math.random): string {
+  const pool = ARRIVAL_TEMPLATES[shopType] ?? ARRIVAL_TEMPLATES.jiulou;
+  const idx = Math.min(Math.floor(rng() * pool.length), pool.length - 1);
+  return pool[idx]!;
+}
+
+
 export interface DialogueOptionTemplate {
   text: string;
   strategy: string;

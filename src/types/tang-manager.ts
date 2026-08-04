@@ -1658,6 +1658,8 @@ export interface TangGameState {
   guestMood: Record<string, GuestMood>;
   /** 事件/接待故事弹窗叙事（模块四；瞬时 UI 状态不持久化） */
   storyNarrative: StoryNarrative | null;
+  /** 客人到店描述弹窗（瞬时；三店通用；AI 叙事或模板） */
+  guestArrival: { guestId: string; content: string; source: 'ai' | 'template' } | null;
   /** 店员主动提醒（店员互动提升 模块五；当前活跃列表，最多 2 条） */
   staffReminders: StaffReminder[];
   /** 店员连续忽略计数（staffId → 次数；3 次触发满意度 -5） */
@@ -2256,6 +2258,10 @@ export interface TangManagerStore extends TangGameState {
   showStoryNarrative: (narrative: StoryNarrative) => void;
   /** 关闭故事弹窗 */
   dismissStoryNarrative: () => void;
+  /** 展示客人到店描述（AI 叙事或模板） */
+  showGuestArrival: (guestId: string, content: string, source: 'ai' | 'template') => void;
+  /** 关闭到店描述弹窗 */
+  dismissGuestArrival: () => void;
   /** 生成当前阶段店员提醒（店员互动提升 模块五） */
   generateReminders: (phase: string, context: ReminderContext) => void;
   /** 采纳/忽略提醒（采纳→效果+满意度+2；忽略×3→满意度-5） */

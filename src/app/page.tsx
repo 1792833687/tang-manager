@@ -22,7 +22,7 @@ import { useEffect, useRef, useState } from 'react';
 import { shopDisplayName } from '@/config/tang-shop-types';
 import { TANG_FEATURES } from '@/config/tang-feature-ids';
 import { getUnlockNarrative } from '@/systems/tang-feature-unlock';
-import { AfternoonActions } from '@/components/afternoon-actions';
+
 import { AchievementPanel } from '@/components/achievement-panel';
 import { ActionFeedback } from '@/components/action-feedback';
 import { ApiConfigModal } from '@/components/api-config-modal';
@@ -35,6 +35,7 @@ import { EndingOverlay } from '@/components/ending-overlay';
 import { StoryModal } from '@/components/tang-manager/story-modal';
 import { StaffReminderHost } from '@/components/tang-manager/staff-reminder-host';
 import { ShopOverviewStrip } from '@/components/shop-overview-strip';
+import { OperationsPanel } from '@/components/operations-panel';
 import { SettlementSummaryModal } from '@/components/settlement-summary-modal';
 import { HexagramCard } from '@/components/hexagram-card';
 import { ShopManagePanel } from '@/components/shop-manage-panel';
@@ -51,7 +52,7 @@ import { MePanel } from '@/components/me-panel';
 import { MobileBottomTab } from '@/components/mobile-bottom-tab';
 import { NAV_ITEMS, NavSidebar, type NavItemKey } from '@/components/nav-sidebar';
 import { NotificationToast } from '@/components/notification-toast';
-import { PlayingActions } from '@/components/playing-actions';
+
 import { PoliticsPanel } from '@/components/politics-panel';
 import { ReceptionPanel } from '@/components/reception-panel';
 import { SceneBanner } from '@/components/scene-banner';
@@ -361,9 +362,8 @@ export default function TangManagerPage(): React.ReactElement {
                       <ReceptionPanel />
                     ) : (
                       <>
-                        {/* Step 5a：接待完且剩余自由行动>0 → 打烊前自由行动阶段（与 PlayingActions 并存） */}
-                        <AfternoonActions />
-                        <PlayingActions />
+                        {/* 经营面板（2026-08-06 重新设计）：数据概况/策略/快捷跳转/午间自由行动/打烊，与接待职责分离 */}
+                        <OperationsPanel />
                       </>
                     )}
                   </>

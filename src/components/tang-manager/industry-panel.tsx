@@ -8,7 +8,6 @@ import { useState } from 'react';
 import { DISH_NAME_POOL, HERB_RECIPE_NAME_POOL } from '@/config/tang-industry-content';
 import { AncientCard } from '@/components/ancient-card';
 import { ModalContainer } from '@/components/modal-container';
-import { DiagnosisPanel } from './diagnosis-panel';
 import { BanquetMenuPanel } from './banquet-menu-panel';
 import { FabricRecommendPanel } from './fabric-recommend-panel';
 import { useTangManagerStore } from '@/stores/tang-manager';
@@ -53,7 +52,7 @@ export function IndustryPanel(): React.ReactElement {
   const [tab, setTab] = useState<Tab>('overview');
   const [category, setCategory] = useState<DishCategory>('荤菜');
   const [herbCat, setHerbCat] = useState<HerbRecipeCategory>('汤剂');
-  const [featurePanel, setFeaturePanel] = useState<'diagnosis' | 'banquet' | 'fabric' | null>(null);
+  const [featurePanel, setFeaturePanel] = useState<'banquet' | 'fabric' | null>(null);
   const [symptom, setSymptom] = useState('失眠盗汗');
   const overview = s.industryOverview();
 
@@ -206,7 +205,6 @@ export function IndustryPanel(): React.ReactElement {
               <div className="mt-1" style={{ color: ANCIENT.secondary }}>每日病患 {p.patientsPerDay} 人 · {p.personality}</div>
             </div>
           ))}
-          <Btn label="亲自坐诊（望闻问切）" onClick={() => setFeaturePanel('diagnosis')} color={ANCIENT.primary} />
           <Btn label="郎中坐堂一日（结算问诊）" onClick={() => s.herbalistPhysicianDaily()} color={ANCIENT.gold} />
           <div className="mt-1 text-xs" style={{ color: ANCIENT.secondary }}>今日问诊 {s.todayPatients} 人 · 累计治愈 {s.curedPatientCount} 人</div>
           <div className="mt-1 text-xs font-bold tracking-widest" style={{ color: ANCIENT.secondary }}>药方研发（{s.herbRecipes.length} 方）</div>
@@ -239,11 +237,6 @@ export function IndustryPanel(): React.ReactElement {
             ))}
           </div>
         </div>
-      )}
-      {featurePanel === 'diagnosis' && (
-        <ModalContainer title="坐诊 · 望闻问切" onClose={() => setFeaturePanel(null)} showConfirm={false}>
-          <DiagnosisPanel />
-        </ModalContainer>
       )}
       {featurePanel === 'banquet' && (
         <ModalContainer title="宴席定制 · 菜单" onClose={() => setFeaturePanel(null)} showConfirm={false}>

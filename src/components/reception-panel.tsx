@@ -5,7 +5,7 @@
  * 拼桌并单入口 + 已处理缩略 + 留言簿入口 + 打烊结算。
  */
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { withBase } from '@/lib/utils/base-path';
 import { GUEST_LEVEL_LABEL } from '@/config/tang-guest-book-content';
 import { GUEST_TYPE_LABEL } from '@/config/tang-guest-content';
@@ -20,6 +20,7 @@ import { ModalContainer } from './modal-container';
 import { DialoguePanel } from './tang-manager/dialogue-panel';
 import { DialogueOptionsPanel } from './tang-manager/dialogue-options-panel';
 import { generateDialogueOptions, type AIDialogueOptions } from '@/systems/tang-ai-dialogue';
+import { generateGuestArrival } from '@/systems/tang-ai-dialogue';
 import { PreorderPanel } from './preorder-panel';
 import { StrategySelector } from './strategy-selector';
 import { triggerTutorial } from '@/systems/tang-tutorial-triggers';
@@ -96,6 +97,17 @@ export function ReceptionPanel(): React.ReactElement {
     });
     return () => { cancelled = true; };
   }, [currentGuest?.id, state.shopType, state.score]);
+  // 客人到店描述（AI 叙事或模板兜底；每位客人只弹一次）
+  const arrivalShownFor = useRef<string | null>(null);
+  useEffect(() => {
+    if (!currentGuest || arrivalShownFor.current === currentGuest.id) return;
+    arrivalShownFor.current = currentGuest.id;
+    let cancelled = false;
+    void generateGuestArrival(currentGuest, state.shopType ?? 'jiulou').then((r) => {
+      if (!cancelled) state.showGuestArrival(currentGuest.id, r.content, r.source);
+    });
+    return () => { cancelled = true; };
+  }, [currentGuest?.id, state.shopType]);
   const [tab, setTab] = useState<'reception' | 'preorder'>('reception');
 
   return (
@@ -104,6 +116,17 @@ export function ReceptionPanel(): React.ReactElement {
         <ModalContainer title="宾客留言簿" onClose={() => setShowGuestBook(false)} showConfirm={false}>
           <GuestBookPanel onBack={() => setShowGuestBook(false)} />
         </ModalContainer>
+      )}
+
+      {/* 客人到店描述弹窗（AI 叙事或模板；点「上前接待」进入接待） */}
+      {state.guestArrival && (
+        <div className="fixed inset-0 z-[96] flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0,0,0,0.5)', animation: 'fade-in 0.2s ease-out' }} onClick={() => state.dismissGuestArrival()}>
+          <div className="w-full max-w-lg rounded-2xl px-8 py-10 text-center" style={{ backgroundColor: ANCIENT.card, border: `2px solid ${ANCIENT.gold}`, boxShadow: `0 0 0 1px ${ANCIENT.gold} inset, 0 24px 48px rgba(60,40,20,0.25)` }} onClick={(e) => e.stopPropagation()}>
+            <div className="text-xs tracking-[0.4em]" style={{ color: ANCIENT.secondary }}>客官到店</div>
+            <p className="mt-4 text-sm leading-7" style={{ color: ANCIENT.text }}>{state.guestArrival.content}</p>
+            <button type="button" onClick={() => state.dismissGuestArrival()} className="mt-6 min-h-10 rounded-lg px-8 py-2 text-sm font-bold tracking-[0.3em]" style={{ backgroundColor: ANCIENT.gold, color: '#FFF' }}>上前接待</button>
+          </div>
+        </div>
       )}
 
       {/* 投诉卡（3.4：接待触发投诉后优先处理；解决投诉 → 气氛+5） */}

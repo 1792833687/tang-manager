@@ -1016,6 +1016,8 @@ function npcIntelContextOf(s: TangManagerStore): Parameters<typeof performBuyInf
   | 'performDiagnosis'
   | 'settleBanquetMenu'
   | 'settleFabricOrder'
+  | 'showGuestArrival'
+  | 'dismissGuestArrival'
 > {
   const b = getDifficultyParams('B');
   return {
@@ -1056,6 +1058,7 @@ function npcIntelContextOf(s: TangManagerStore): Parameters<typeof performBuyInf
     dialogueHistory: [],
     guestMood: {},
     storyNarrative: null,
+  guestArrival: null,
     staffReminders: [],
     staffIgnoreCounts: {},
     dailyStaffGreeting: null,
@@ -6134,6 +6137,14 @@ export const useTangManagerStore = create<TangManagerStore>()(
       /** 关闭故事弹窗 */
       dismissStoryNarrative: (): void => {
         set({ storyNarrative: null });
+      },
+      /** 展示客人到店描述（瞬时；三店通用） */
+      showGuestArrival: (guestId, content, source): void => {
+        set({ guestArrival: { guestId, content, source } });
+      },
+      /** 关闭到店描述弹窗（进入接待） */
+      dismissGuestArrival: (): void => {
+        set({ guestArrival: null });
       },
 
       /** 生成当前阶段店员提醒（店员互动提升 模块五） */

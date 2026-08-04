@@ -16,6 +16,7 @@ import { createJSONStorage, persist } from 'zustand/middleware';
 import { v4 as uuidv4 } from 'uuid';
 import { getDifficultyParams } from '@/config/tang-difficulty';
 import { STREET_NEWS_POOL, STREET_NEWS_KEEP } from '@/config/tang-street-news';
+import { MEDICAL_BOOKS, MEDICAL_BOOK_MAP } from '@/config/tang-medical-books';
 import { INITIAL_GOODS } from '@/config/tang-initial-goods';
 import { EVENT_DEFINITIONS, EVENT_MAP, buildSeizureEvent } from '@/config/tang-events';
 import { createZustandPersistStorage } from '@/infrastructure/storage/zustand-persist-bridge';
@@ -1006,6 +1007,12 @@ function npcIntelContextOf(s: TangManagerStore): Parameters<typeof performBuyInf
   | 'purchaseShopAsset'
   | 'azhaoRaiseSalary'
   | 'generateStreetNews'
+  | 'createDialogueContext'
+  | 'updateDialogueEmotion'
+  | 'clearDialogueContext'
+  | 'appendDialogueHistory'
+  | 'purchaseMedicalBook'
+  | 'performDiagnosis'
 > {
   const b = getDifficultyParams('B');
   return {
@@ -1219,6 +1226,9 @@ function npcIntelContextOf(s: TangManagerStore): Parameters<typeof performBuyInf
     todayTasks: [],
     todayTasksCompleted: [],
     streetNews: [],
+    dialogueContexts: {},
+    medicalKnowledge: 0,
+    ownedMedicalBooks: [],
     todayTaskMindReadBonus: 0,
     completedRareEvents: [],
     hexagramCardOpen: false,
@@ -1949,6 +1959,9 @@ export const useTangManagerStore = create<TangManagerStore>()(
             todayTasks: [],
             todayTasksCompleted: [],
             streetNews: [],
+            dialogueContexts: {},
+            medicalKnowledge: 0,
+            ownedMedicalBooks: [],
             todayTaskMindReadBonus: 0,
             hexagramCardOpen: false,
             activeBet: null,
@@ -3112,6 +3125,71 @@ export const useTangManagerStore = create<TangManagerStore>()(
         }
         set({ streetNews: [...(s.streetNews ?? []), ...picked].slice(-STREET_NEWS_KEEP) });
         return picked;
+      },
+      /** 创建 AI 对话上下文（规格书 5.4） */
+      createDialogueContext: (guestId, guestInfo): void => {
+        const s = get();
+        const prev = s.dialogueContexts?.[guestId];
+        set({
+          dialogueContexts: {
+            ...(s.dialogueContexts ?? {}),
+            [guestId]: prev ?? { guestId, history: [], guestInfo, shopType: s.shopType ?? 'jiulou', emotion: guestInfo.mood === '愉悦' ? 70 : guestInfo.mood === '烦躁' ? 30 : guestInfo.mood === '挑剔' ? 40 : 50 },
+          },
+        });
+      },
+      /** 更新情绪（clamp 0-100；规格书 1.6/5.4） */
+      updateDialogueEmotion: (guestId, delta): void => {
+        const s = get();
+        const ctx = s.dialogueContexts?.[guestId];
+        if (!ctx) return;
+        set({ dialogueContexts: { ...(s.dialogueContexts ?? {}), [guestId]: { ...ctx, emotion: clamp(ctx.emotion + delta, 0, 100) } } });
+      },
+      /** 清空对话上下文（规格书 5.4） */
+      clearDialogueContext: (guestId): void => {
+        const s = get();
+        const next = { ...(s.dialogueContexts ?? {}) };
+        delete next[guestId];
+        set({ dialogueContexts: next });
+      },
+      /** 追加对话历史（保留最近 10 条；规格书 5.3） */
+      appendDialogueHistory: (guestId, entry): void => {
+        const s = get();
+        const ctx = s.dialogueContexts?.[guestId];
+        if (!ctx) return;
+        set({
+          dialogueContexts: {
+            ...(s.dialogueContexts ?? {}),
+            [guestId]: { ...ctx, history: [...ctx.history, entry].slice(-10) },
+          },
+        });
+      },
+      /** 购买医书（规格书 2.2/5.4）：银两足够 → 扣款 + 加入 ownedMedicalBooks */
+      purchaseMedicalBook: (bookId): { ok: boolean; reason?: string } => {
+        const s = get();
+        const book = MEDICAL_BOOK_MAP[bookId];
+        if (!book) return { ok: false, reason: '无此书' };
+        if ((s.ownedMedicalBooks ?? []).includes(bookId)) return { ok: false, reason: '此书已购' };
+        if ((s.silver ?? 0) < book.price) return { ok: false, reason: '银两不足' };
+        set((st) =>
+          syncCompat(st, {
+            silver: Math.max(0, st.silver - book.price),
+            ownedMedicalBooks: [...(st.ownedMedicalBooks ?? []), bookId],
+            eventLog: [...st.eventLog, `med-book:${bookId}:${st.day}`],
+          })
+        );
+        return { ok: true };
+      },
+      /** 亲自坐诊（规格书 2.1）：消耗 10 精力 */
+      performDiagnosis: (guestId): { ok: boolean; reason?: string } => {
+        const s = get();
+        if (s.phase !== 'playing') return { ok: false, reason: '当前不可坐诊' };
+        if ((s.energy ?? 0) < 10) return { ok: false, reason: '精力不足，坐诊需耗 10 点' };
+        set((st) => ({
+          energy: clamp((st.energy ?? 100) - 10, 0, 100),
+          dailyEnergyConsumed: (st.dailyEnergyConsumed ?? 0) + 10,
+          eventLog: [...st.eventLog, `diagnose:${guestId}:${st.day}`],
+        }));
+        return { ok: true };
       },
 
       /** 打烊判定今日要务完成并发放奖励（盖「了」红印；返回新完成 id） */
@@ -6694,6 +6772,9 @@ export const useTangManagerStore = create<TangManagerStore>()(
         todayHexagram: s.todayHexagram?.id ?? null,
         todayTasks: s.todayTasks,
   streetNews: s.streetNews,
+  dialogueContexts: s.dialogueContexts,
+  medicalKnowledge: s.medicalKnowledge,
+  ownedMedicalBooks: s.ownedMedicalBooks,
         todayTasksCompleted: s.todayTasksCompleted,
         todayTaskMindReadBonus: s.todayTaskMindReadBonus,
         completedRareEvents: s.completedRareEvents,

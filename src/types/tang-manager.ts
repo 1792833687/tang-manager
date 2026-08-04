@@ -1637,6 +1637,15 @@ export interface FogRevealResult {
 }
 
 /** 掌柜游戏状态（Step 1 数值字段 + Step 2 经营字段 + Step 3 世界激活字段） */
+/** AI 对话上下文（规格书 5.3）：情绪追踪 + 最近 10 条历史 */
+export interface DialogueContext {
+  guestId: string;
+  history: { role: 'guest' | 'player'; content: string }[];
+  guestInfo: { identity: string; personality: string; mood: string; preferences: string[] };
+  shopType: string;
+  emotion: number;
+}
+
 export interface TangGameState {
   /** 当前阶段 */
   phase: GamePhase;
@@ -2024,6 +2033,12 @@ export interface TangGameState {
   todayTasksCompleted?: string[];
   /** 市井消息（2026-08-06 新增系统；每日清晨生成 1-2 条，保留最近 10 条） */
   streetNews?: string[];
+  /** AI 对话上下文表（规格书 5.4） */
+  dialogueContexts?: Record<string, DialogueContext>;
+  /** 药铺坐诊：医疗知识等级 0-3（规格书 2.2） */
+  medicalKnowledge?: number;
+  /** 已购医书 id 列表（规格书 2.2） */
+  ownedMedicalBooks?: string[];
   /** 今日要务「用通晓人心」额外奖励的次数（打烊奖励发放用） */
   todayTaskMindReadBonus?: number;
   /** 已触发稀有事件 id（意外之喜去重） */
@@ -2483,6 +2498,18 @@ export interface TangManagerStore extends TangGameState {
   generateDailyTasks: () => DailyTask[];
   /** 清晨生成市井消息（2026-08-06 新增系统） */
   generateStreetNews: () => string[];
+  /** 创建 AI 对话上下文（规格书 5.4） */
+  createDialogueContext: (guestId: string, guestInfo: DialogueContext['guestInfo']) => void;
+  /** 更新情绪（规格书 5.4） */
+  updateDialogueEmotion: (guestId: string, delta: number) => void;
+  /** 清空对话上下文（规格书 5.4） */
+  clearDialogueContext: (guestId: string) => void;
+  /** 购买医书（规格书 5.4/2.2） */
+  purchaseMedicalBook: (bookId: string) => { ok: boolean; reason?: string };
+  /** 亲自坐诊（规格书 2.1：消耗 10 精力） */
+  performDiagnosis: (guestId: string) => { ok: boolean; reason?: string };
+  /** 追加对话历史（上下文管理） */
+  appendDialogueHistory: (guestId: string, entry: { role: 'guest' | 'player'; content: string }) => void;
   /** 打烊判定今日要务完成并发放奖励（盖「了」红印；返回新完成 id） */
   checkDailyTasks: () => string[];
   /** 清晨检测遗命触发（条件+前置完成；写入 activeLegacyQuest） */

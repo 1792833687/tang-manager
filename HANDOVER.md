@@ -274,3 +274,17 @@ tsc 零错误 → 全量 **1142 用例全绿（92 文件）** → build 静态�
 | 客户名字库扩充 | GUEST_NAME_POOLS：normal 8→27（姓+数字扩充至 十五 + 阿福/阿贵/铁柱/春生等）、big_order 4→10、special 4→12、help 4→10、observe 3→9（合计 23→68 个名字） |
 
 **验收**：tsc 零错误 → 全量 **1143 用例全绿**（92 文件，+1 市井消息 store 测试）→ build 静态导出成功 → Playwright：货架售/本价显示、市场调查弹窗（物价平稳/指数 1.00/三品类市价区间）均可见，0 控制台错误。
+
+---
+
+## AI 叙事强化与产业特色深化（2026-08-06 · 规格书 7 模块落地）
+
+模块一 · AI 驱动对话决策：tang-ai-dialogue.ts（AI 分析需求 → 3 策略选项：品质金/性价比绿/投其所好紫，各含预估成交价/成交率/风险 → 客人回应 accept/hesitate/reject + 最终价/附加条件/情绪变化 → 叙事）；8s 超时 + JSON 解析 + tang-dialogue-fallbacks.ts 每店 5 套三选项兜底；情绪追踪（createDialogueContext/updateDialogueEmotion/clearDialogueContext，初始值随心情 30-70）；dialogue-options-panel.tsx 展示组件。
+模块二 · 药铺坐诊：tang-medical-books.ts（5 医书 伤寒论 80两 → 千金方 300两）、tang-diagnosis.ts（12 病症四范围、模糊提示随知识等级 Lv0 70%/Lv3 10%、误导项 2→0、药方匹配度+知识加成）、store performDiagnosis（-10 精力）、diagnosis-panel.tsx（知识/医书/症状/选药/开方/档位）。
+模块三 · 酒楼宴席定制：tang-banquet-scoring.ts（荤素均衡/招牌菜/酒水/预算 50-70%/类型必备菜 五项，≥8 大获成功/5-7 顺利/<5 有瑕疵）、banquet-menu-panel.tsx（选类型/预算/增减菜品/实时评分）。
+模块四 · 布庄面料匹配：tang-fabric-matching.ts（身份 40%/季节 30%/场合 30% + 量体 +20）、fabric-recommend-panel.tsx（四维选择 + 实时匹配度/档位）。
+模块五 · Store：新增 dialogueContexts/medicalKnowledge/ownedMedicalBooks + 7 actions（createDialogueContext/updateDialogueEmotion/clearDialogueContext/appendDialogueHistory/purchaseMedicalBook/performDiagnosis），全部持久化。
+模块六 · UI：4 面板挂载于产业面板（店铺管理 → 经营之道·产业 tab → 宴席定制/面料推荐/亲自坐诊）。
+模块七 · 测试：+4 文件 34 用例（ai-dialogue/diagnosis/banquet-scoring/fabric-matching），全绿。
+
+验收：tsc 零错误 → 全量 1177 用例全绿（96 文件）→ build 静态导出成功 → Playwright：店铺管理 → 酒楼·庖厨 → 宴席定制菜单（组合评分 10/大获成功/增减菜品）可见，0 控制台错误。

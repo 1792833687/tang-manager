@@ -31,6 +31,7 @@ import {
 } from '@/systems/tang-dynamic-traffic';
 import { enqueueModal as enqueueModalSystem, dequeueModal as dequeueModalSystem, clearModalQueue as clearModalQueueSystem, makeModal, peekModal, type ModalItem } from '@/systems/tang-modal-queue';
 import { generateDailyIntelligence as generateDailyIntelligenceSystem, investigateIntelligence, updateSourceReliability, isIntelligenceExpired, type Intelligence } from '@/systems/tang-intelligence';
+import { recordInteraction, consecutiveActionCount, onSecretDiscovered as onSecretDiscoveredSystem, onBottomLineCrossed, type NPCInteraction, type SecretReaction } from '@/systems/tang-npc-memory';
 import { checkGamblingAddiction, GAMBLING_ADDICTION_DAYS, useLuckyStar } from '@/systems/tang-luck';
 import { handleGuest, markContaminatedGuests, computeStockInfo, BACKLASH_THRESHOLD } from '@/systems/tang-reception';
 import { settleDay as settleDaySystem } from '@/systems/tang-settlement';
@@ -1012,6 +1013,9 @@ function npcIntelContextOf(s: TangManagerStore): Parameters<typeof performBuyInf
   | 'generateStreetNews'
   | 'generateDailyIntelligence'
   | 'verifyIntelligence'
+  | 'recordNPCInteraction'
+  | 'onSecretDiscovered'
+  | 'crossNPCBottomLine'
   | 'createDialogueContext'
   | 'updateDialogueEmotion'
   | 'clearDialogueContext'
@@ -3196,6 +3200,41 @@ export const useTangManagerStore = create<TangManagerStore>()(
         );
         if (r.failed) return { ok: true, result: 'failed' };
         return { ok: true, result: r.intel.accurate ? 'accurate' : 'inaccurate' };
+      },
+      /** 记录 NPC 互动（v1.2：行为记忆，保留最近 5 次） */
+      recordNPCInteraction: (npcId, actionType, description): void => {
+        const s = get();
+        const npc = s.gameNPCs?.[npcId];
+        if (!npc) return;
+        const entry: NPCInteraction = { day: s.day, actionType, description };
+        const next = recordInteraction(npc.recentInteractions ?? [], entry);
+        const bonus = actionType === 'advice_taken' ? 2 : actionType === 'request_accepted' ? 1 : 0;
+        set({
+          gameNPCs: { ...s.gameNPCs, [npcId]: { ...npc, recentInteractions: next, favor: clamp((npc.favor ?? 0) + bonus, 0, 100) } },
+        });
+      },
+      /** 秘密被发现（v1.2：按好感产生态度变化与好感变动） */
+      onSecretDiscovered: (npcId): { reaction: SecretReaction; favorDelta: number } => {
+        const s = get();
+        const npc = s.gameNPCs?.[npcId];
+        if (!npc) return { reaction: 'wary', favorDelta: 0 };
+        const r = onSecretDiscoveredSystem(npc.favor ?? 50);
+        set({
+          gameNPCs: { ...s.gameNPCs, [npcId]: { ...npc, secretDiscovered: true, secretReaction: r.reaction, favor: clamp((npc.favor ?? 50) + r.favorDelta, 0, 100) } },
+          eventLog: [...s.eventLog, `npc-secret:${npcId}:${r.reaction}:${s.day}`],
+        });
+        return { reaction: r.reaction, favorDelta: r.favorDelta };
+      },
+      /** 触碰底线（v1.2：好感暴跌 30-50 + 锁定 30 天） */
+      crossNPCBottomLine: (npcId, line): void => {
+        const s = get();
+        const npc = s.gameNPCs?.[npcId];
+        if (!npc) return;
+        const r = onBottomLineCrossed();
+        set({
+          gameNPCs: { ...s.gameNPCs, [npcId]: { ...npc, favor: clamp((npc.favor ?? 50) + r.favorDelta, 0, 100), favorLockUntilDay: s.day + 30, recentInteractions: recordInteraction(npc.recentInteractions ?? [], { day: s.day, actionType: 'betrayal', description: line }) } },
+          eventLog: [...s.eventLog, `npc-bottomline:${npcId}:${s.day}`],
+        });
       },
       /** 创建 AI 对话上下文（规格书 5.4） */
       createDialogueContext: (guestId, guestInfo): void => {

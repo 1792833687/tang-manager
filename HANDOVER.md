@@ -389,3 +389,14 @@ tsc 零错误 → 全量 **1142 用例全绿（92 文件）** → build 静态�
 5. 测试：+12（情报生成分级/打探验证/来源升降/过期 + store 生成与验证），全绿。
 
 验收：tsc 零错误 → 全量 1206 用例全绿（98 文件）→ build 静态导出成功。模块二（NPC 记忆/秘密）、模块三（多周目传承）、模块四（产业巅峰挑战）留待下一轮。
+
+---
+
+## v1.2 世界活化 · 模块二 NPC 双向情绪与秘密系统（2026-08-05 · P0）
+
+1. tang-npc-memory.ts（纯系统）：NPCInteraction 行为记忆（保留 5 条/连续计数）、interactionEffects（连续 3 次拒绝→好感上限-20% / 连续 3 次采纳→好感+50%）、onSecretDiscovered（好感≥70 trust+10 / 40-69 wary-5 / <40 hostile-20）、onBottomLineCrossed（好感暴跌 30-50）、checkFenceSitter（墙头草双高→各降10）、standReward（站队+15）、referralBoost（苏大娘≥60→程掌柜+3）、NPC_BOTTOM_LINES（5 NPC 各 1-2 条底线）。
+2. GameNPC 扩展：recentInteractions / secretDiscovered / secretReaction / favorLockUntilDay（触碰底线锁定 30 天）。
+3. Store actions：recordNPCInteraction（记录+好感微增）、onSecretDiscovered（按好感态度变化）、crossNPCBottomLine（暴跌+锁定+记背叛）。
+4. 测试：+7（行为记忆/连续效果/秘密态度/底线/墙头草/站队/人脉链），全绿。
+
+验收：tsc 零错误 → 全量 1213 用例全绿（99 文件）→ build 静态导出成功。模块三（多周目传承）、模块四（产业巅峰挑战）留待下一轮。

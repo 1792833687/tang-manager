@@ -18,6 +18,7 @@ import type {
 import type { UnlockGreenChannelResult } from '@/systems/tang-trade';
 import type { ModalItem } from '@/systems/tang-modal-queue';
 import type { Intelligence } from '@/systems/tang-intelligence';
+import type { NPCInteraction, SecretReaction } from '@/systems/tang-npc-memory';
 import type { Faction, FactionPerk, FactionUpdateResult, NPCFavor } from '@/types/tang-factions';
 import type { JournalEntry } from '@/types/tang-journal';
 import type { DialogueMessage, GuestMood, ShopReceptionResult, StoryNarrative } from '@/types/tang-dialogue';
@@ -1629,6 +1630,14 @@ export interface GameNPC {
   hiddenStory: string;
   /** 功能说明（逐字） */
   function: string;
+  /** v1.2 双向情绪：最近 5 次互动（store 运行时写入） */
+  recentInteractions?: NPCInteraction[];
+  /** v1.2 秘密是否已被玩家发现 */
+  secretDiscovered?: boolean;
+  /** v1.2 秘密发现后的态度 */
+  secretReaction?: SecretReaction | null;
+  /** v1.2 好感锁定到期日（触碰底线后 30 天） */
+  favorLockUntilDay?: number;
 }
 
 /** 迷雾揭示信息类型（势力四项 + NPC 四项；供揭示函数与 store action 共用） */
@@ -2301,6 +2310,12 @@ export interface TangManagerStore extends TangGameState {
   closeCurrentModal: () => void;
   /** 清空弹窗队列 */
   clearModalQueue: () => void;
+  /** 记录 NPC 互动（v1.2：行为记忆/连续效果） */
+  recordNPCInteraction: (npcId: string, actionType: NPCInteraction['actionType'], description: string) => void;
+  /** 秘密被发现（v1.2：按好感产生态度变化） */
+  onSecretDiscovered: (npcId: string) => { reaction: SecretReaction; favorDelta: number };
+  /** 触碰底线（v1.2：好感暴跌+锁定 30 天） */
+  crossNPCBottomLine: (npcId: string, line: string) => void;
   /** 生成当前阶段店员提醒（店员互动提升 模块五） */
   generateReminders: (phase: string, context: ReminderContext) => void;
   /** 采纳/忽略提醒（采纳→效果+满意度+2；忽略×3→满意度-5） */

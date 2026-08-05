@@ -169,7 +169,7 @@ function OperationsStatusStrip(): React.ReactElement {  const guests = useTangMa
   return (
     <GameErrorBoundary>
     <>
-      <div className="grid grid-cols-4 gap-2 text-center text-xs md:text-sm">
+      <div className="grid grid-cols-2 gap-2 text-center text-xs md:grid-cols-4 md:text-sm">
         <div className="rounded-lg px-2 py-1.5" style={{ backgroundColor: ANCIENT.card, border: `1px solid ${allHandled ? ANCIENT.gold : ANCIENT.border}`, color: allHandled ? ANCIENT.accent : ANCIENT.text }}>
           今日 · {guestLabel}
         </div>
@@ -335,10 +335,10 @@ export default function TangManagerPage(): React.ReactElement {
           className="tang-root flex min-h-screen flex-col"
           style={{ backgroundColor: ANCIENT.background, color: ANCIENT.text, paddingTop: 'env(safe-area-inset-top, 0px)' }}
         >
-          <div className="flex flex-1">
+          <div className="flex min-w-0 flex-1">
             <NavSidebar active={activePanel} onSelect={handleSelect} disabled={phase !== 'playing'} />
             {/* pb-20 为移动端底部 Tab 预留留白；md+ 桌面侧栏布局恢复 pb-4 */}
-            <main className="flex flex-1 flex-col gap-4 p-4 pb-24 md:pb-4">
+            <main className="flex min-w-0 flex-1 flex-col gap-4 p-4 pb-24 md:pb-4">
       <StaffReminderHost />
               <SceneBanner />
               {phase === 'identity' && <IdentityPanel />}

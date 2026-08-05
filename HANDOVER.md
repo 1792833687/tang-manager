@@ -336,3 +336,15 @@ tsc 零错误 → 全量 **1142 用例全绿（92 文件）** → build 静态�
 3. 概览条移动端适配：chips 行 flex-nowrap + overflow-x-auto（一行横滑，不再换行堆高），chip 加 whitespace-nowrap（修门面 emoji 换行使行高 86px 的问题）；移动端概览条高度 104px → 56px。
 
 验收：tsc 零错误 → 全量 1182 用例全绿（96 文件）→ build 静态导出成功 → Playwright 移动视口（390×844 / 375×667）：无水平溢出、底部导航就位、概览条单行 56px、接待面板/经营面板可操作、弹窗不超视口，0 控制台错误。
+
+---
+
+## 移动端显示修复（2026-08-05）
+
+修复「移动端 UI 显示不完全」硬伤：main 内容区在移动视口被撑到 542px（视口 390/375/320），右侧 152px 截断。
+根因：main 为 flex-1（flex 默认 min-width:auto），被 OperationsStatusStrip 的 4 列网格 min-content 撑宽。
+修复：
+1. page.tsx 父 flex 容器与 main 加 min-w-0（允许收缩到视口）。
+2. OperationsStatusStrip 移动端 grid-cols-4 → grid-cols-2（md:grid-cols-4），窄屏两行显示。
+
+验收：tsc 零错误 → 全量 1182 用例全绿 → build 静态导出成功 → Playwright 移动视口（390/375/320）遍历经营/我/货架/账本/店铺管理/手札/成就/接待 全部 main=视口宽、零水平溢出，0 控制台错误。

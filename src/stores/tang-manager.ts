@@ -32,6 +32,7 @@ import {
 import { enqueueModal as enqueueModalSystem, dequeueModal as dequeueModalSystem, clearModalQueue as clearModalQueueSystem, makeModal, peekModal, type ModalItem } from '@/systems/tang-modal-queue';
 import { generateDailyIntelligence as generateDailyIntelligenceSystem, investigateIntelligence, updateSourceReliability, isIntelligenceExpired, type Intelligence } from '@/systems/tang-intelligence';
 import { recordInteraction, consecutiveActionCount, onSecretDiscovered as onSecretDiscoveredSystem, onBottomLineCrossed, type NPCInteraction, type SecretReaction } from '@/systems/tang-npc-memory';
+import { canStartPeakChallenge, peakSuccessRate, resolvePeakChallenge as resolvePeakChallengeSystem, peakOutcome, type PeakState } from '@/systems/tang-peak-challenges';
 import { checkGamblingAddiction, GAMBLING_ADDICTION_DAYS, useLuckyStar } from '@/systems/tang-luck';
 import { handleGuest, markContaminatedGuests, computeStockInfo, BACKLASH_THRESHOLD } from '@/systems/tang-reception';
 import { settleDay as settleDaySystem } from '@/systems/tang-settlement';
@@ -1016,6 +1017,8 @@ function npcIntelContextOf(s: TangManagerStore): Parameters<typeof performBuyInf
   | 'recordNPCInteraction'
   | 'onSecretDiscovered'
   | 'crossNPCBottomLine'
+  | 'startPeakChallenge'
+  | 'resolvePeakChallenge'
   | 'createDialogueContext'
   | 'updateDialogueEmotion'
   | 'clearDialogueContext'
@@ -1244,6 +1247,9 @@ function npcIntelContextOf(s: TangManagerStore): Parameters<typeof performBuyInf
     todayTasks: [],
     todayTasksCompleted: [],
     streetNews: [],
+    activePeakChallenge: null,
+    peakChallengeCompleted: [],
+    peakBuffs: [],
     dailyIntelligence: [],
     intelligenceSources: {},
     dialogueContexts: {},
@@ -1986,6 +1992,9 @@ export const useTangManagerStore = create<TangManagerStore>()(
             todayTasks: [],
             todayTasksCompleted: [],
             streetNews: [],
+    activePeakChallenge: null,
+    peakChallengeCompleted: [],
+    peakBuffs: [],
             dailyIntelligence: [],
             intelligenceSources: {},
             dialogueContexts: {},
@@ -3235,6 +3244,66 @@ export const useTangManagerStore = create<TangManagerStore>()(
           gameNPCs: { ...s.gameNPCs, [npcId]: { ...npc, favor: clamp((npc.favor ?? 50) + r.favorDelta, 0, 100), favorLockUntilDay: s.day + 30, recentInteractions: recordInteraction(npc.recentInteractions ?? [], { day: s.day, actionType: 'betrayal', description: line }) } },
           eventLog: [...s.eventLog, `npc-bottomline:${npcId}:${s.day}`],
         });
+      },
+      /** 开启产业巅峰挑战（v1.2 模块四：Lv5 + 声望≥900 + 产业条件） */
+      startPeakChallenge: (type): { ok: boolean; reason?: string } => {
+        const s = get();
+        if ((s.peakBuffs ?? []).includes(type)) return { ok: false, reason: '已达成此巅峰' };
+        if ((s.peakChallengeCompleted ?? []).includes(type)) return { ok: false, reason: '此巅峰挑战已结束' };
+        const kind = s.shopType === 'buzhuang' ? 'clothier' : s.shopType === 'yaopu' ? 'herbalist' : 'tavern';
+        const lv = kind === 'tavern' ? s.tavernLevel : kind === 'clothier' ? s.clothierLevel : s.herbalistLevel;
+        const state: PeakState = {
+          type,
+          day: s.day,
+          level: lv,
+          reputation: s.reputation,
+          score: s.score,
+          medicalKnowledge: s.medicalKnowledge ?? 0,
+          progress: kind === 'herbalist' ? (s.todayDiagnosed ?? 0) + (s.curedPatientCount ?? 0) : kind === 'clothier' ? (s.customOrderCount ?? 0) : (s.tavernBanquetCount ?? 0),
+          bonusUnits: kind === 'herbalist' ? (s.ownedMedicalBooks ?? []).length : kind === 'clothier' ? (s.physicians ?? []).length : 0,
+          hasBuff: (s.peakBuffs ?? []).length > 0,
+        };
+        if (!canStartPeakChallenge(state)) {
+          const def = { imperial_banquet: '皇家宴席', imperial_robe: '御用朝服', resurrection: '起死回生' }[type];
+          return { ok: false, reason: '未满足触发条件（Lv5 · 声望≥900 · ' + def + '）' };
+        }
+        set({ activePeakChallenge: type });
+        return { ok: true };
+      },
+      /** 结算巅峰挑战（v1.2 模块四：成功得称号+永久 Buff；失败扣声望/赔偿） */
+      resolvePeakChallenge: (type, success): { ok: boolean; title?: string; buff?: string; reason?: string } => {
+        const s = get();
+        if (s.activePeakChallenge !== type) return { ok: false, reason: '未开启此挑战' };
+        const kind = s.shopType === 'buzhuang' ? 'clothier' : s.shopType === 'yaopu' ? 'herbalist' : 'tavern';
+        const lv = kind === 'tavern' ? s.tavernLevel : kind === 'clothier' ? s.clothierLevel : s.herbalistLevel;
+        const state: PeakState = {
+          type,
+          day: s.day,
+          level: lv,
+          reputation: s.reputation,
+          score: s.score,
+          medicalKnowledge: s.medicalKnowledge ?? 0,
+          progress: kind === 'herbalist' ? (s.todayDiagnosed ?? 0) + (s.curedPatientCount ?? 0) : kind === 'clothier' ? (s.customOrderCount ?? 0) : (s.tavernBanquetCount ?? 0),
+          bonusUnits: kind === 'herbalist' ? (s.ownedMedicalBooks ?? []).length : kind === 'clothier' ? (s.physicians ?? []).length : 0,
+          hasBuff: (s.peakBuffs ?? []).length > 0,
+        };
+        const r = success !== undefined ? { success, rate: peakSuccessRate(state) } : resolvePeakChallengeSystem(state);
+        const outcome = peakOutcome(state, r.success);
+        const buffs = r.success ? [...(s.peakBuffs ?? []), outcome.buff].filter(Boolean) : s.peakBuffs ?? [];
+        set((st) =>
+          syncCompat(st, {
+            activePeakChallenge: null,
+            peakChallengeCompleted: [...(st.peakChallengeCompleted ?? []), type],
+            peakBuffs: buffs,
+            silver: Math.max(0, st.silver + outcome.silverDelta),
+            reputation: clamp((st.reputation ?? 0) + outcome.reputationDelta, 0, 1000),
+            eventLog: [...st.eventLog, `peak-${type}:${r.success ? 'win' : 'lose'}:${st.day}`],
+          })
+        );
+        if (r.success) {
+          get().enqueueModal({ id: 'peak-' + type, type: 'achievement', priority: 3, title: '产业巅峰 · ' + outcome.title, data: { narrative: '手札浮现金字：「' + outcome.title + '」。' } });
+        }
+        return { ok: true, title: r.success ? outcome.title : undefined, buff: r.success ? outcome.buff : undefined };
       },
       /** 创建 AI 对话上下文（规格书 5.4） */
       createDialogueContext: (guestId, guestInfo): void => {
@@ -6983,6 +7052,9 @@ export const useTangManagerStore = create<TangManagerStore>()(
         todayHexagram: s.todayHexagram?.id ?? null,
         todayTasks: s.todayTasks,
   streetNews: s.streetNews,
+  activePeakChallenge: s.activePeakChallenge,
+  peakChallengeCompleted: s.peakChallengeCompleted,
+  peakBuffs: s.peakBuffs,
   dailyIntelligence: s.dailyIntelligence,
   intelligenceSources: s.intelligenceSources,
   dialogueContexts: s.dialogueContexts,

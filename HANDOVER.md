@@ -400,3 +400,14 @@ tsc 零错误 → 全量 **1142 用例全绿（92 文件）** → build 静态�
 4. 测试：+7（行为记忆/连续效果/秘密态度/底线/墙头草/站队/人脉链），全绿。
 
 验收：tsc 零错误 → 全量 1213 用例全绿（99 文件）→ build 静态导出成功。模块三（多周目传承）、模块四（产业巅峰挑战）留待下一轮。
+
+---
+
+## v1.2 世界活化 · 模块四 产业巅峰挑战（2026-08-05 · P1）
+
+1. tang-peak-challenges.ts（配置）：三产业 Lv5 巅峰——酒楼「皇家宴席」（评分≥4.8，基准30%→上限80%）、布庄「御用朝服」（官服定制≥10，25%→75%）、药铺「起死回生」（医书Lv3+坐诊≥50，30%→70%）；成功称号+永久 Buff（宴席收益+30%/定制溢价+40%/药方售价+50%），失败扣声望/赔偿。
+2. tang-peak-challenges.ts（系统）：canStartPeakChallenge 触发判定 / peakSuccessRate（基准+加成封顶）/ peakOutcome 成功失败结果。
+3. Store：activePeakChallenge/peakChallengeCompleted/peakBuffs + startPeakChallenge（条件校验）/ resolvePeakChallenge（成功入队「产业巅峰」成就弹窗、永久 Buff；失败扣声望/赔偿），持久化。
+4. 测试：+8（触发条件/成功率/成功失败/三产业定义），全绿。
+
+验收：tsc 零错误 → 全量 1221 用例全绿（100 文件）→ build 静态导出成功。模块三（多周目家族传承）留待下一轮。

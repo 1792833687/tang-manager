@@ -19,6 +19,7 @@ import type { UnlockGreenChannelResult } from '@/systems/tang-trade';
 import type { ModalItem } from '@/systems/tang-modal-queue';
 import type { Intelligence } from '@/systems/tang-intelligence';
 import type { NPCInteraction, SecretReaction } from '@/systems/tang-npc-memory';
+import type { PeakChallengeType } from '@/config/tang-peak-challenges';
 import type { Faction, FactionPerk, FactionUpdateResult, NPCFavor } from '@/types/tang-factions';
 import type { JournalEntry } from '@/types/tang-journal';
 import type { DialogueMessage, GuestMood, ShopReceptionResult, StoryNarrative } from '@/types/tang-dialogue';
@@ -2063,6 +2064,12 @@ export interface TangGameState {
   todayTasksCompleted?: string[];
   /** 市井消息（2026-08-06 新增系统；每日清晨生成 1-2 条，保留最近 10 条） */
   streetNews?: string[];
+  /** 产业巅峰挑战（v1.2 模块四：Lv5 终极目标） */
+  activePeakChallenge?: PeakChallengeType | null;
+  /** 巅峰挑战完成记录 */
+  peakChallengeCompleted?: string[];
+  /** 巅峰挑战获得的永久 Buff（如 banquet_income_1.3） */
+  peakBuffs?: string[];
   /** 市井情报（v1.2：分级/可验证/可追踪） */
   dailyIntelligence?: Intelligence[];
   /** 情报来源可信度（source → { reliability, verifiedCount }） */
@@ -2310,6 +2317,10 @@ export interface TangManagerStore extends TangGameState {
   closeCurrentModal: () => void;
   /** 清空弹窗队列 */
   clearModalQueue: () => void;
+  /** 开启产业巅峰挑战（v1.2 模块四） */
+  startPeakChallenge: (type: PeakChallengeType) => { ok: boolean; reason?: string };
+  /** 结算巅峰挑战（成功得称号+永久 Buff；失败扣声望/赔偿） */
+  resolvePeakChallenge: (type: PeakChallengeType, success?: boolean) => { ok: boolean; title?: string; buff?: string; reason?: string };
   /** 记录 NPC 互动（v1.2：行为记忆/连续效果） */
   recordNPCInteraction: (npcId: string, actionType: NPCInteraction['actionType'], description: string) => void;
   /** 秘密被发现（v1.2：按好感产生态度变化） */

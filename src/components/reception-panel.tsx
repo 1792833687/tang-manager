@@ -27,6 +27,7 @@ import { StrategySelector } from './strategy-selector';
 import { triggerTutorial } from '@/systems/tang-tutorial-triggers';
 import { TutorialHighlight } from './tutorial-highlight';
 import { pushActionFeedback } from './action-feedback';
+import { ActionButton } from './ui-kit';
 
 const TYPE_COLOR: Record<GuestType, string> = {
   normal: ANCIENT.primary,
@@ -276,14 +277,7 @@ export function ReceptionPanel(): React.ReactElement {
         >
           翻看宾客留言簿（{(state.guestBook ?? []).length}）
         </button>
-        <button
-          type="button"
-          onClick={() => { state.settleDay(); triggerTutorial('FIRST_SETTLE'); }}
-          className="rounded-lg px-6 py-2 text-sm font-bold tracking-[0.3em]"
-          style={{ backgroundColor: ANCIENT.border, color: '#FFF', border: `1px solid ${ANCIENT.gold}` }}
-        >
-          打烊结算
-        </button>
+        <ActionButton label="打烊结算" variant="primary" onClick={() => { state.settleDay(); triggerTutorial('FIRST_SETTLE'); }} />
       </div>
     </div>
   );

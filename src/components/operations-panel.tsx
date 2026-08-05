@@ -13,6 +13,7 @@ import { triggerTutorial } from '@/systems/tang-tutorial-triggers';
 import { StrategySelector } from './strategy-selector';
 import { BusinessStrategySelector } from './business-strategy-selector';
 import { AfternoonActions } from './afternoon-actions';
+import { SectionTitle, ActionButton } from './ui-kit';
 import { TANG_FEATURES } from '@/config/tang-feature-ids';
 import { pushActionFeedback } from './action-feedback';
 
@@ -53,17 +54,17 @@ export function OperationsPanel(): React.ReactElement {
     <div className="flex flex-col gap-3">
       {/* 数据概况 */}
       <div className="rounded-xl px-3 py-2.5" style={{ backgroundColor: ANCIENT.card, border: `1px solid ${ANCIENT.border}` }}>
-        <div className="text-xs font-bold tracking-[0.3em]" style={{ color: ANCIENT.secondary }}>数据概况</div>
+        <SectionTitle>数据概况</SectionTitle>
         <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
-          <StatCell label="现银" value={formatMoney(s.silver)} />
+          <StatCell label="现银" value={formatMoney(s.silver)} color={ANCIENT.gold} />
           <StatCell label="飞钱" value={formatMoney(s.feiqian)} />
           <StatCell label="负债" value={formatMoney(s.legacyDebt)} color={ANCIENT.accent} />
-          <StatCell label="评分" value={s.score.toFixed(1)} />
+          <StatCell label="评分" value={s.score.toFixed(1)} color={ANCIENT.gold} />
           <StatCell label="声望" value={String(s.reputation)} color={ANCIENT.gold} />
           <StatCell label="气氛" value={String(s.shopAtmosphere ?? 50)} />
           <StatCell label="物价指数" value={(s.priceIndex ?? 1).toFixed(2)} />
           <StatCell label="今日客数" value={handled + '/' + s.guests.length} />
-          <StatCell label="今日营收" value={formatMoney(todayIncome)} />
+          <StatCell label="今日营收" value={formatMoney(todayIncome)} color={ANCIENT.primary} />
           <StatCell label="精力" value={s.energy + '%'} />
           <StatCell label="库容" value={used + '/' + s.maxStorage} />
           <StatCell label="门面" value={'Lv' + lv.level + ' ' + lv.name} color={ANCIENT.accent} />
@@ -72,7 +73,7 @@ export function OperationsPanel(): React.ReactElement {
 
       {/* 经营策略 */}
       <div className="rounded-xl px-3 py-2.5" style={{ backgroundColor: ANCIENT.card, border: `1px solid ${ANCIENT.gold}` }}>
-        <div className="text-xs font-bold tracking-[0.3em]" style={{ color: ANCIENT.gold }}>经营策略（当日生效）</div>
+        <SectionTitle tone="gold">经营策略（当日生效）</SectionTitle>
         <div className="mt-2 grid gap-2 lg:grid-cols-2">
           <StrategySelector />
           <BusinessStrategySelector />
@@ -81,7 +82,7 @@ export function OperationsPanel(): React.ReactElement {
 
       {/* 快捷功能跳转 */}
       <div className="rounded-xl px-3 py-2.5" style={{ backgroundColor: ANCIENT.card, border: `1px solid ${ANCIENT.border}` }}>
-        <div className="text-xs font-bold tracking-[0.3em]" style={{ color: ANCIENT.secondary }}>快捷经营</div>
+        <SectionTitle>快捷经营</SectionTitle>
         <div className="mt-2 grid grid-cols-3 gap-1.5">
           {QUICK_LINKS.map((q) => (
             <button key={q.key} type="button" onClick={() => {
@@ -98,7 +99,7 @@ export function OperationsPanel(): React.ReactElement {
 
       {/* 打烊结算 */}
       <div className="flex justify-end">
-        <button type="button" onClick={() => { s.settleDay(); triggerTutorial('FIRST_SETTLE'); }} className="rounded-lg px-8 py-2.5 text-sm font-bold tracking-[0.3em] transition-transform active:scale-[0.97]" style={{ backgroundColor: ANCIENT.border, color: '#FFF', border: `1px solid ${ANCIENT.gold}` }}>打烊结算</button>
+        <ActionButton label="打烊结算" variant="primary" onClick={() => { s.settleDay(); triggerTutorial('FIRST_SETTLE'); }} />
       </div>
     </div>
   );

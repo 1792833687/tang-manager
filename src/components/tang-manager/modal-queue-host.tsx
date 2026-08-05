@@ -8,6 +8,7 @@ import { useTangManagerStore } from '@/stores/tang-manager';
 import { hexagramById } from '@/config/tang-hexagrams';
 import { ANCIENT } from '@/theme/tokens';
 import { formatMoney } from '@/lib/format-money';
+import { ActionButton } from '@/components/ui-kit';
 
 function ModalShell({ title, children }: { title: string; children: React.ReactNode }): React.ReactElement {
   const close = useTangManagerStore((s) => s.closeCurrentModal);
@@ -22,7 +23,7 @@ function ModalShell({ title, children }: { title: string; children: React.ReactN
         </div>
         <div className="mt-3">{children}</div>
         <div className="mt-5 flex justify-end">
-          <button type="button" onClick={close} className="min-h-10 rounded-lg px-8 py-2 text-sm font-bold tracking-[0.3em]" style={{ backgroundColor: ANCIENT.gold, color: '#FFF' }}>知道了</button>
+          <ActionButton label="知道了" variant="primary" onClick={close} />
         </div>
       </div>
     </div>

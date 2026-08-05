@@ -27,6 +27,8 @@ import { StrategySelector } from './strategy-selector';
 import { triggerTutorial } from '@/systems/tang-tutorial-triggers';
 import { TutorialHighlight } from './tutorial-highlight';
 import { pushActionFeedback } from './action-feedback';
+import { INTELLIGENCE_TIERS } from '@/config/tang-intelligence-tier';
+import { intelligenceDaysLeft, isIntelligenceExpired } from '@/systems/tang-intelligence';
 import { ActionButton } from './ui-kit';
 
 const TYPE_COLOR: Record<GuestType, string> = {
@@ -179,6 +181,49 @@ export function ReceptionPanel(): React.ReactElement {
             {(state.streetNews ?? []).slice(-3).map((n, i) => (
               <p key={i} className="text-xs leading-5" style={{ color: ANCIENT.text }}>· {n}</p>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* 市井情报（v1.2：分级·可打探验证·可追踪） */}
+      {(state.dailyIntelligence ?? []).length > 0 && (
+        <div className="rounded-xl px-3 py-2" style={{ backgroundColor: ANCIENT.card, border: `1px solid ${ANCIENT.primary}` }}>
+          <div className="flex items-center justify-between">
+            <div className="text-xs font-bold tracking-[0.3em]" style={{ color: ANCIENT.primary }}>市井情报</div>
+            <span className="text-[10px]" style={{ color: ANCIENT.secondary }}>可打探验证 · 依据决策</span>
+          </div>
+          <div className="mt-1.5 flex flex-col gap-1.5">
+            {(state.dailyIntelligence ?? []).slice(-5).map((intel) => {
+              const tier = INTELLIGENCE_TIERS[intel.tier];
+              const expired = isIntelligenceExpired(intel, state.day);
+              const left = intelligenceDaysLeft(intel, state.day);
+              const mark = intel.investigated ? (intel.accurate ? '✓ 属实' : '✗ 不实') : intel.verified ? '✓' : '';
+              return (
+                <div key={intel.id} className="rounded-lg px-2.5 py-1.5 text-xs leading-5" style={{ backgroundColor: ANCIENT.background, border: `1px solid ${expired ? ANCIENT.border : ANCIENT.border}`, opacity: expired ? 0.55 : 1 }}>
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-bold" style={{ color: ANCIENT.primary }}>{tier.icon} {tier.name}</span>
+                    <span className="text-[10px]" style={{ color: ANCIENT.secondary }}>{intel.source}{intel.investigated ? ' · 已验证' : ''}{expired ? ' · 已过期' : ' · 剩' + left + '日'}</span>
+                  </div>
+                  <div className="mt-0.5" style={{ color: ANCIENT.text }}>{intel.content}</div>
+                  <div className="mt-1 flex items-center justify-between gap-2">
+                    <span className="text-[10px]" style={{ color: intel.investigated ? (intel.accurate ? ANCIENT.primary : ANCIENT.accent) : ANCIENT.secondary }}>{mark || (expired ? '过期' : '未验证')}</span>
+                    {intel.actionable && !intel.investigated && !expired && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const r = state.verifyIntelligence(intel.id);
+                          pushActionFeedback(r.ok ? (r.result === 'accurate' ? '打探属实，来源可信 +' : r.result === 'inaccurate' ? '打探不实，来源可信 -' : '打探无果，标注存疑') : (r.reason ?? '打探失败'), r.ok ? (r.result === 'accurate' ? 'success' : 'warning') : 'warning');
+                        }}
+                        className="rounded px-2 py-0.5 text-[10px] font-bold"
+                        style={{ backgroundColor: ANCIENT.gold, color: '#FFF' }}
+                      >
+                        派人打探（{tier.investigationCost}两）
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
       )}

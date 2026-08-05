@@ -628,3 +628,33 @@ describe('Step 5b · 弹窗队列（2026-08-05）', () => {
     expect(useTangManagerStore.getState().currentModal).toBeNull();
   });
 });
+describe('Step 5b · 市井情报生成（v1.2）', () => {
+  it('startNewDay 清晨生成市井情报（坊间至少 1 条）', () => {
+    const store = useTangManagerStore.getState();
+    store.initByDifficulty('B');
+    useTangManagerStore.setState({ reputation: 500, xieQiFavor: 60 });
+    store.startNewDay();
+    const intel = useTangManagerStore.getState().dailyIntelligence ?? [];
+    expect(intel.length).toBeGreaterThanOrEqual(1);
+    expect(intel.some((i) => i.tier === 1)).toBe(true);
+    // 高声望/高好感 → 含商会/地下
+    expect(intel.some((i) => i.tier === 2)).toBe(true);
+    expect(intel.some((i) => i.tier === 3)).toBe(true);
+  });
+
+  it('verifyIntelligence：银两足够 → 打探并更新来源可信度', () => {
+    const store = useTangManagerStore.getState();
+    store.initByDifficulty('B');
+    useTangManagerStore.setState({ reputation: 500, xieQiFavor: 60, silver: 100, energy: 100 });
+    store.startNewDay();
+    const intel = useTangManagerStore.getState().dailyIntelligence ?? [];
+    expect(intel.length).toBeGreaterThan(0);
+    const id = intel[0].id;
+    const before = useTangManagerStore.getState().silver;
+    const r = store.verifyIntelligence(id);
+    expect(r.ok).toBe(true);
+    expect(useTangManagerStore.getState().silver).toBeLessThan(before); // 扣打探费
+    const after = (useTangManagerStore.getState().dailyIntelligence ?? []).find((i) => i.id === id)!;
+    expect(after.investigated).toBe(true);
+  });
+});

@@ -30,6 +30,7 @@ import {
   applyReceptionStrategy,
 } from '@/systems/tang-dynamic-traffic';
 import { enqueueModal as enqueueModalSystem, dequeueModal as dequeueModalSystem, clearModalQueue as clearModalQueueSystem, makeModal, peekModal, type ModalItem } from '@/systems/tang-modal-queue';
+import { generateDailyIntelligence as generateDailyIntelligenceSystem, investigateIntelligence, updateSourceReliability, isIntelligenceExpired, type Intelligence } from '@/systems/tang-intelligence';
 import { checkGamblingAddiction, GAMBLING_ADDICTION_DAYS, useLuckyStar } from '@/systems/tang-luck';
 import { handleGuest, markContaminatedGuests, computeStockInfo, BACKLASH_THRESHOLD } from '@/systems/tang-reception';
 import { settleDay as settleDaySystem } from '@/systems/tang-settlement';
@@ -1009,6 +1010,8 @@ function npcIntelContextOf(s: TangManagerStore): Parameters<typeof performBuyInf
   | 'purchaseShopAsset'
   | 'azhaoRaiseSalary'
   | 'generateStreetNews'
+  | 'generateDailyIntelligence'
+  | 'verifyIntelligence'
   | 'createDialogueContext'
   | 'updateDialogueEmotion'
   | 'clearDialogueContext'
@@ -1237,6 +1240,8 @@ function npcIntelContextOf(s: TangManagerStore): Parameters<typeof performBuyInf
     todayTasks: [],
     todayTasksCompleted: [],
     streetNews: [],
+    dailyIntelligence: [],
+    intelligenceSources: {},
     dialogueContexts: {},
     medicalKnowledge: 0,
     ownedMedicalBooks: [],
@@ -1977,6 +1982,8 @@ export const useTangManagerStore = create<TangManagerStore>()(
             todayTasks: [],
             todayTasksCompleted: [],
             streetNews: [],
+            dailyIntelligence: [],
+            intelligenceSources: {},
             dialogueContexts: {},
             medicalKnowledge: 0,
             ownedMedicalBooks: [],
@@ -2202,6 +2209,7 @@ export const useTangManagerStore = create<TangManagerStore>()(
         get().drawDailyHexagram();
         get().generateDailyTasks();
         get().generateStreetNews();
+        get().generateDailyIntelligence();
         get().triggerLegacyQuest();
         get().checkBiographies();
         if (get().day % 30 === 1) {
@@ -3150,6 +3158,44 @@ export const useTangManagerStore = create<TangManagerStore>()(
         }
         set({ streetNews: [...(s.streetNews ?? []), ...picked].slice(-STREET_NEWS_KEEP) });
         return picked;
+      },
+      /** 生成每日市井情报（v1.2：坊间 1-2 + 声望≥300 商会 + 谢七好感≥50 地下；接入 startNewDay） */
+      generateDailyIntelligence: (): Intelligence[] => {
+        const s = get();
+        const factionRel = (s.factions ?? []).find((f) => f.id === 'xishi')?.relationship ?? 0;
+        const list = generateDailyIntelligenceSystem({
+          day: s.day,
+          reputation: s.reputation,
+          xieQiFavor: Math.max(s.xieQiFavor ?? 0, factionRel),
+        });
+        const kept = [...(s.dailyIntelligence ?? []), ...list].slice(-30);
+        set({ dailyIntelligence: kept });
+        return list;
+      },
+      /** 派人打探验证情报（耗银+精力；更新来源可信度；v1.2 规格书 1.5） */
+      verifyIntelligence: (id): { ok: boolean; result?: 'accurate' | 'inaccurate' | 'failed'; reason?: string } => {
+        const s = get();
+        const intel = (s.dailyIntelligence ?? []).find((i) => i.id === id);
+        if (!intel) return { ok: false, reason: '情报不存在' };
+        const tierDef = { 1: { cost: 1, energy: 5 }, 2: { cost: 5, energy: 10 }, 3: { cost: 20, energy: 15 } }[intel.tier]!;
+        if ((s.silver ?? 0) < tierDef.cost) return { ok: false, reason: '银两不足' };
+        if ((s.energy ?? 0) < tierDef.energy) return { ok: false, reason: '精力不足' };
+        const r = investigateIntelligence(intel, Math.random);
+        const srcState = s.intelligenceSources?.[intel.source] ?? { reliability: intel.sourceReliability, verifiedCount: 0 };
+        const reliable = updateSourceReliability(srcState.reliability, r.investigated && r.intel.accurate);
+        const updatedIntel: Intelligence = { ...r.intel, sourceReliability: reliable };
+        set((st) =>
+          syncCompat(st, {
+            silver: Math.max(0, st.silver - tierDef.cost),
+            energy: clamp((st.energy ?? 100) - tierDef.energy, 0, 100),
+            dailyEnergyConsumed: (st.dailyEnergyConsumed ?? 0) + tierDef.energy,
+            dailyIntelligence: (st.dailyIntelligence ?? []).map((i) => (i.id === id ? updatedIntel : i)),
+            intelligenceSources: { ...(st.intelligenceSources ?? {}), [intel.source]: { reliability: reliable, verifiedCount: srcState.verifiedCount + 1 } },
+            eventLog: [...st.eventLog, `intel-verify:${intel.id}:${st.day}`],
+          })
+        );
+        if (r.failed) return { ok: true, result: 'failed' };
+        return { ok: true, result: r.intel.accurate ? 'accurate' : 'inaccurate' };
       },
       /** 创建 AI 对话上下文（规格书 5.4） */
       createDialogueContext: (guestId, guestInfo): void => {
@@ -6898,6 +6944,8 @@ export const useTangManagerStore = create<TangManagerStore>()(
         todayHexagram: s.todayHexagram?.id ?? null,
         todayTasks: s.todayTasks,
   streetNews: s.streetNews,
+  dailyIntelligence: s.dailyIntelligence,
+  intelligenceSources: s.intelligenceSources,
   dialogueContexts: s.dialogueContexts,
   medicalKnowledge: s.medicalKnowledge,
   ownedMedicalBooks: s.ownedMedicalBooks,

@@ -17,6 +17,7 @@ import type {
 } from '@/types/tang-map';
 import type { UnlockGreenChannelResult } from '@/systems/tang-trade';
 import type { ModalItem } from '@/systems/tang-modal-queue';
+import type { Intelligence } from '@/systems/tang-intelligence';
 import type { Faction, FactionPerk, FactionUpdateResult, NPCFavor } from '@/types/tang-factions';
 import type { JournalEntry } from '@/types/tang-journal';
 import type { DialogueMessage, GuestMood, ShopReceptionResult, StoryNarrative } from '@/types/tang-dialogue';
@@ -2053,6 +2054,10 @@ export interface TangGameState {
   todayTasksCompleted?: string[];
   /** 市井消息（2026-08-06 新增系统；每日清晨生成 1-2 条，保留最近 10 条） */
   streetNews?: string[];
+  /** 市井情报（v1.2：分级/可验证/可追踪） */
+  dailyIntelligence?: Intelligence[];
+  /** 情报来源可信度（source → { reliability, verifiedCount }） */
+  intelligenceSources?: Record<string, { reliability: number; verifiedCount: number }>;
   /** AI 对话上下文表（规格书 5.4） */
   dialogueContexts?: Record<string, DialogueContext>;
   /** 药铺坐诊：医疗知识等级 0-3（规格书 2.2） */
@@ -2538,6 +2543,10 @@ export interface TangManagerStore extends TangGameState {
   generateDailyTasks: () => DailyTask[];
   /** 清晨生成市井消息（2026-08-06 新增系统） */
   generateStreetNews: () => string[];
+  /** 生成每日市井情报（v1.2：按声望/好感分级） */
+  generateDailyIntelligence: () => Intelligence[];
+  /** 派人打探验证情报（耗银+精力；更新来源可信度） */
+  verifyIntelligence: (id: string) => { ok: boolean; result?: 'accurate' | 'inaccurate' | 'failed'; reason?: string };
   /** 创建 AI 对话上下文（规格书 5.4） */
   createDialogueContext: (guestId: string, guestInfo: DialogueContext['guestInfo']) => void;
   /** 更新情绪（规格书 5.4） */

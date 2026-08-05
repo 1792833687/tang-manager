@@ -20,6 +20,7 @@ import type { ModalItem } from '@/systems/tang-modal-queue';
 import type { Intelligence } from '@/systems/tang-intelligence';
 import type { NPCInteraction, SecretReaction } from '@/systems/tang-npc-memory';
 import type { PeakChallengeType } from '@/config/tang-peak-challenges';
+import type { LegacyEffect } from '@/config/tang-legacy-inheritance';
 import type { Faction, FactionPerk, FactionUpdateResult, NPCFavor } from '@/types/tang-factions';
 import type { JournalEntry } from '@/types/tang-journal';
 import type { DialogueMessage, GuestMood, ShopReceptionResult, StoryNarrative } from '@/types/tang-dialogue';
@@ -2066,6 +2067,10 @@ export interface TangGameState {
   streetNews?: string[];
   /** 产业巅峰挑战（v1.2 模块四：Lv5 终极目标） */
   activePeakChallenge?: PeakChallengeType | null;
+  /** 多周目传承效果（v1.2 模块三：开局应用） */
+  legacyInheritance?: LegacyEffect | null;
+  /** 跨周目保留物品（开局手札展示） */
+  crossGameItems?: string[];
   /** 巅峰挑战完成记录 */
   peakChallengeCompleted?: string[];
   /** 巅峰挑战获得的永久 Buff（如 banquet_income_1.3） */
@@ -2321,6 +2326,10 @@ export interface TangManagerStore extends TangGameState {
   startPeakChallenge: (type: PeakChallengeType) => { ok: boolean; reason?: string };
   /** 结算巅峰挑战（成功得称号+永久 Buff；失败扣声望/赔偿） */
   resolvePeakChallenge: (type: PeakChallengeType, success?: boolean) => { ok: boolean; title?: string; buff?: string; reason?: string };
+  /** 读取并应用多周目传承（v1.2 模块三：开局调用） */
+  applyLegacyInheritance: () => { effect: LegacyEffect | null; items: string[] };
+  /** 记录一局结局到传承存档（v1.2 模块三：结局时调用） */
+  recordLegacyRun: () => void;
   /** 记录 NPC 互动（v1.2：行为记忆/连续效果） */
   recordNPCInteraction: (npcId: string, actionType: NPCInteraction['actionType'], description: string) => void;
   /** 秘密被发现（v1.2：按好感产生态度变化） */

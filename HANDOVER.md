@@ -411,3 +411,18 @@ tsc 零错误 → 全量 **1142 用例全绿（92 文件）** → build 静态�
 4. 测试：+8（触发条件/成功率/成功失败/三产业定义），全绿。
 
 验收：tsc 零错误 → 全量 1221 用例全绿（100 文件）→ build 静态导出成功。模块三（多周目家族传承）留待下一轮。
+
+---
+
+## v1.2 世界活化 · 模块三 多周目家族传承（2026-08-05 · P1）—— v1.2 四模块全部完成
+
+1. tang-legacy-inheritance.ts（配置）：8 结局传承表（一代商圣 经验×1.2 / 皇商 信用+50 商会-20 / 权倾朝野 声望+30 地下-30 / 归隐 阿昭+30 员工+20 / 商界教父 特殊员工 / 家道中落 负债×2 经验×1.2 / 无人问津 / 执棋者 线索墙解锁+线索3）+ 传承物品（波斯玉佩/祖传招牌/推荐信）+ 多周目成就定义（陆家三代/长安活化石/全结局制霸/故人重逢）。
+2. tang-legacy-inheritance.ts（系统）：computeLegacyInheritance（结局效果+传承角色好感继承：沈听澜/谢七≥80→+20、阿昭≥90→+30+跨周目物品）、checkMultiRunAchievements、legacyItemName。
+3. infrastructure/legacy-storage.ts：独立 localStorage（tang-legacy-data）与主存档隔离。
+4. Store：legacyInheritance/crossGameItems + applyLegacyInheritance（开局读取）/ recordLegacyRun（结局时记录，已接线 triggerEnding），持久化。
+5. 测试：+12（结局效果/角色继承/物品/多周目成就），全绿。
+
+验收：tsc 零错误 → 全量 1233 用例全绿（101 文件）→ build 静态导出成功。
+
+## v1.2 世界活化 · 四模块总览（已完成）
+模块一 市井情报系统（P0）· 模块二 NPC 双向情绪与秘密（P0）· 模块三 多周目传承（P1）· 模块四 产业巅峰挑战（P1）——情报可交互、NPC 有记忆、周目有传承、产业有终极目标，世界活化闭环达成。

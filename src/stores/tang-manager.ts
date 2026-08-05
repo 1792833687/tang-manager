@@ -32,7 +32,10 @@ import {
 import { enqueueModal as enqueueModalSystem, dequeueModal as dequeueModalSystem, clearModalQueue as clearModalQueueSystem, makeModal, peekModal, type ModalItem } from '@/systems/tang-modal-queue';
 import { generateDailyIntelligence as generateDailyIntelligenceSystem, investigateIntelligence, updateSourceReliability, isIntelligenceExpired, type Intelligence } from '@/systems/tang-intelligence';
 import { recordInteraction, consecutiveActionCount, onSecretDiscovered as onSecretDiscoveredSystem, onBottomLineCrossed, type NPCInteraction, type SecretReaction } from '@/systems/tang-npc-memory';
+import { loadLegacySave, saveLegacySave, pushRunRecord, type LegacySave } from '@/infrastructure/legacy-storage';
 import { canStartPeakChallenge, peakSuccessRate, resolvePeakChallenge as resolvePeakChallengeSystem, peakOutcome, type PeakState } from '@/systems/tang-peak-challenges';
+import { computeLegacyInheritance, checkMultiRunAchievements } from '@/systems/tang-legacy-inheritance';
+import type { LegacyEffect } from '@/config/tang-legacy-inheritance';
 import { checkGamblingAddiction, GAMBLING_ADDICTION_DAYS, useLuckyStar } from '@/systems/tang-luck';
 import { handleGuest, markContaminatedGuests, computeStockInfo, BACKLASH_THRESHOLD } from '@/systems/tang-reception';
 import { settleDay as settleDaySystem } from '@/systems/tang-settlement';
@@ -1019,6 +1022,8 @@ function npcIntelContextOf(s: TangManagerStore): Parameters<typeof performBuyInf
   | 'crossNPCBottomLine'
   | 'startPeakChallenge'
   | 'resolvePeakChallenge'
+  | 'applyLegacyInheritance'
+  | 'recordLegacyRun'
   | 'createDialogueContext'
   | 'updateDialogueEmotion'
   | 'clearDialogueContext'
@@ -1250,6 +1255,8 @@ function npcIntelContextOf(s: TangManagerStore): Parameters<typeof performBuyInf
     activePeakChallenge: null,
     peakChallengeCompleted: [],
     peakBuffs: [],
+    legacyInheritance: null,
+    crossGameItems: [],
     dailyIntelligence: [],
     intelligenceSources: {},
     dialogueContexts: {},
@@ -1995,6 +2002,8 @@ export const useTangManagerStore = create<TangManagerStore>()(
     activePeakChallenge: null,
     peakChallengeCompleted: [],
     peakBuffs: [],
+    legacyInheritance: null,
+    crossGameItems: [],
             dailyIntelligence: [],
             intelligenceSources: {},
             dialogueContexts: {},
@@ -3053,6 +3062,8 @@ export const useTangManagerStore = create<TangManagerStore>()(
           patch.politicalEndgame = true; // 权倾朝野：政治终局补全
         }
         set(patch);
+        // v1.2 模块三：结局时记录历局（多周目传承存档）
+        get().recordLegacyRun();
         const entry = recordChoiceJournal(journalContext(s), {
           title: def.title,
           content: def.subtitle,
@@ -3304,6 +3315,29 @@ export const useTangManagerStore = create<TangManagerStore>()(
           get().enqueueModal({ id: 'peak-' + type, type: 'achievement', priority: 3, title: '产业巅峰 · ' + outcome.title, data: { narrative: '手札浮现金字：「' + outcome.title + '」。' } });
         }
         return { ok: true, title: r.success ? outcome.title : undefined, buff: r.success ? outcome.buff : undefined };
+      },
+      /** 读取并应用多周目传承（v1.2 模块三：开局调用） */
+      applyLegacyInheritance: (): { effect: LegacyEffect | null; items: string[] } => {
+        const s = get();
+        const save = loadLegacySave();
+        const prev = save.runs.length > 0 ? save.runs[save.runs.length - 1]! : null;
+        const r = computeLegacyInheritance(prev);
+        set({ legacyInheritance: r.effect, crossGameItems: r.inheritedItems });
+        return { effect: r.effect, items: r.inheritedItems };
+      },
+      /** 记录一局结局到传承存档（v1.2 模块三：结局时调用） */
+      recordLegacyRun: (): void => {
+        const s = get();
+        const save = loadLegacySave();
+        const items = s.crossGameItems ?? [];
+        if (s.legacyInheritance?.inheritItem && !items.includes(s.legacyInheritance.inheritItem)) items.push(s.legacyInheritance.inheritItem);
+        const npcFavors: Record<string, number> = {};
+        for (const n of s.gameNPCs ? Object.values(s.gameNPCs) : []) npcFavors[n.id] = n.favor ?? 50;
+        if (s.xiaoerFavor !== undefined) npcFavors['a-zhao'] = s.xiaoerFavor;
+        const run = { ending: s.endingTriggered ?? 'unknown', totalDays: s.day, npcFavors, items };
+        const { save: next } = pushRunRecord(save, run);
+        const achievements = checkMultiRunAchievements(next.runs);
+        saveLegacySave({ ...next, achievements: [...new Set([...(next.achievements ?? []), ...achievements])] });
       },
       /** 创建 AI 对话上下文（规格书 5.4） */
       createDialogueContext: (guestId, guestInfo): void => {

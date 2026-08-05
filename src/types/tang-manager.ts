@@ -16,6 +16,7 @@ import type {
   TransportingGoods,
 } from '@/types/tang-map';
 import type { UnlockGreenChannelResult } from '@/systems/tang-trade';
+import type { ModalItem } from '@/systems/tang-modal-queue';
 import type { Faction, FactionPerk, FactionUpdateResult, NPCFavor } from '@/types/tang-factions';
 import type { JournalEntry } from '@/types/tang-journal';
 import type { DialogueMessage, GuestMood, ShopReceptionResult, StoryNarrative } from '@/types/tang-dialogue';
@@ -1671,6 +1672,10 @@ export interface TangGameState {
   guestMood: Record<string, GuestMood>;
   /** 事件/接待故事弹窗叙事（模块四；瞬时 UI 状态不持久化） */
   storyNarrative: StoryNarrative | null;
+  /** 弹窗队列（打烊结算流程：结算→事件→成就→…按优先级逐一弹出） */
+  modalQueue: ModalItem[];
+  /** 当前正在展示的弹窗 */
+  currentModal: ModalItem | null;
   /** 客人到店描述弹窗（瞬时；三店通用；AI 叙事或模板） */
   guestArrival: { guestId: string; content: string; source: 'ai' | 'template' } | null;
   /** 店员主动提醒（店员互动提升 模块五；当前活跃列表，最多 2 条） */
@@ -2102,6 +2107,10 @@ export interface TangGameState {
   todayComplaints?: number;
   todayGuestsHandled?: number;
   todayRejectedGuests?: number;
+  /** 今日代劳收入（全托/择要自动结算汇总） */
+  todayDelegatedIncome?: number;
+  /** 今日代劳明细 */
+  todayDelegated?: Array<{ guestName: string; income: number }>;
   todayMindReadBackfired?: number;
   /** 先祖之眼（传承）：通晓人心反噬阈值翻倍（store 接线传 backlashThresholdOverride） */
   ancestralEyeActive?: boolean;
@@ -2281,6 +2290,12 @@ export interface TangManagerStore extends TangGameState {
   showGuestArrival: (guestId: string, content: string, source: 'ai' | 'template') => void;
   /** 关闭到店描述弹窗 */
   dismissGuestArrival: () => void;
+  /** 弹窗入队（按优先级排序） */
+  enqueueModal: (item: ModalItem) => void;
+  /** 关闭当前弹窗，弹出下一个 */
+  closeCurrentModal: () => void;
+  /** 清空弹窗队列 */
+  clearModalQueue: () => void;
   /** 生成当前阶段店员提醒（店员互动提升 模块五） */
   generateReminders: (phase: string, context: ReminderContext) => void;
   /** 采纳/忽略提醒（采纳→效果+满意度+2；忽略×3→满意度-5） */
@@ -2535,6 +2550,8 @@ export interface TangManagerStore extends TangGameState {
   performDiagnosis: (guestId: string) => { ok: boolean; reason?: string };
   /** 宴席菜单结算（规格书 3.3：按评分档位入账/声望） */
   settleBanquetMenu: (input: { banquetType: string; budget: number; score: number }) => { silverDelta: number; reputationDelta: number };
+  /** 接待策略自动代劳结算（全托/择要：进接待即代劳未接待的客人，2026-08-05 修复顺序） */
+  settleStrategyDelegated: (rng?: () => number) => { settled: number; income: number };
   /** 面料定制结算（规格书 4.3：按匹配档位入账/声望） */
   settleFabricOrder: (input: { match: number; tier: 'satisfied' | 'normal' | 'refund' }) => { silverDelta: number; reputationDelta: number };
   /** 追加对话历史（上下文管理） */

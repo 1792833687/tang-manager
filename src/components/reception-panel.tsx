@@ -109,6 +109,20 @@ export function ReceptionPanel(): React.ReactElement {
     });
     return () => { cancelled = true; };
   }, [currentGuest?.id, state.shopType]);
+  // 接待策略自动代劳（全托/择要：进接待即代劳未接待的客人，修复「需手点接待」顺序问题）
+  const strategySettledRef = useRef(false);
+  useEffect(() => {
+    if (strategySettledRef.current) return;
+    const strategy = state.receptionStrategy ?? 'all';
+    if (strategy === 'all') return;
+    const hasUndelegated = state.guests.some((g) => !g.handled);
+    if (!hasUndelegated) return;
+    strategySettledRef.current = true;
+    const r = state.settleStrategyDelegated();
+    if (r.settled > 0) {
+      pushActionFeedback('伙计代劳了 ' + r.settled + ' 位客人，入账 ' + r.income + ' 两', 'success');
+    }
+  }, [state.receptionStrategy, state.guests]);
   const [tab, setTab] = useState<'reception' | 'preorder'>('reception');
 
   return (
@@ -163,6 +177,24 @@ export function ReceptionPanel(): React.ReactElement {
           <div className="mt-1.5 flex flex-col gap-1">
             {(state.streetNews ?? []).slice(-3).map((n, i) => (
               <p key={i} className="text-xs leading-5" style={{ color: ANCIENT.text }}>· {n}</p>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* 伙计代劳汇总卡（全托/择要自动结算后展示） */}
+      {(state.todayDelegated ?? []).length > 0 && (
+        <div className="rounded-xl px-3 py-2" style={{ backgroundColor: ANCIENT.card, border: `1px solid ${ANCIENT.gold}` }}>
+          <div className="flex items-center justify-between text-xs">
+            <span className="font-bold tracking-widest" style={{ color: ANCIENT.gold }}>伙计代劳汇总</span>
+            <span style={{ color: ANCIENT.secondary }}>共入账 {formatMoney(state.todayDelegatedIncome ?? 0)}</span>
+          </div>
+          <div className="mt-1.5 flex flex-col gap-1">
+            {(state.todayDelegated ?? []).slice(-6).map((d, i) => (
+              <div key={i} className="flex items-center justify-between text-xs" style={{ color: ANCIENT.text }}>
+                <span>{d.guestName}</span>
+                <span style={{ color: ANCIENT.secondary }}>{formatMoney(d.income)}</span>
+              </div>
             ))}
           </div>
         </div>

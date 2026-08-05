@@ -348,3 +348,20 @@ tsc 零错误 → 全量 **1142 用例全绿（92 文件）** → build 静态�
 2. OperationsStatusStrip 移动端 grid-cols-4 → grid-cols-2（md:grid-cols-4），窄屏两行显示。
 
 验收：tsc 零错误 → 全量 1182 用例全绿 → build 静态导出成功 → Playwright 移动视口（390/375/320）遍历经营/我/货架/账本/店铺管理/手札/成就/接待 全部 main=视口宽、零水平溢出，0 控制台错误。
+
+---
+
+## 打烊结算与接待逻辑修复（2026-08-05 · 规格书模块一/二落地）
+
+模块一 · 弹窗队列系统：
+- 新建 tang-modal-queue.ts（纯系统）：ModalItem 类型 + MODAL_PRIORITY（结算1<事件2<成就3<月度4<卦象5<要务6）+ 入队稳定排序/出队/队首/清空。
+- Store 新增 modalQueue/currentModal + enqueueModal/closeCurrentModal/clearModalQueue。
+- 新建 modal-queue-host.tsx：按 currentModal.type 逐一渲染（结算/卦象/事件/要务），z-125 置顶；结算与卦象原有弹窗在队列激活时门控不重复。
+- settleDay 接线：结算→卦象→要务入队，逐一弹出（实测 结算→卦象→要务 顺序正确，不再堆叠）。
+
+模块二 · 接待策略自动代劳：
+- 新增 settleStrategyDelegated action：全托/择要时进接待即自动代劳未接待的客人（按 applyReceptionStrategy 分流），无需手点接待。
+- 接待面板进入时自动执行 + 「伙计代劳汇总」卡（明细+总入账）+ 浮动反馈。
+- 亲力亲为不代劳；择要保留大单/特殊客人。
+
+验收：tsc 零错误 → 全量 1194 用例全绿（97 文件，+12：弹窗队列 8 + store 代劳 3 + 队列 3 等）→ build 静态导出成功 → Playwright：打烊后 结算→卦象→要务 逐一出、接待全托自动代劳+汇总卡，0 控制台错误。

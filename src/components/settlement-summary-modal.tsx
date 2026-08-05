@@ -10,11 +10,12 @@ import { formatMoney } from '@/lib/format-money';
 
 export function SettlementSummaryModal(): React.ReactElement | null {
   const open = useTangManagerStore((s) => s.settlementPopupOpen);
+  const queueActive = useTangManagerStore((s) => s.currentModal !== null);
   const settle = useTangManagerStore((s) => s.todaySettlement);
   const eventLog = useTangManagerStore((s) => s.eventLog ?? []);
   const report = useTangManagerStore((s) => s.dailyStaffReport);
   const dismiss = useTangManagerStore((s) => s.dismissSettlementPopup);
-  if (!open || !settle) return null;
+  if (queueActive || !open || !settle) return null;
   const day = settle.day;
   const todayEvents = eventLog.filter((e) => e.startsWith('[第' + day + '日]'));
   return (

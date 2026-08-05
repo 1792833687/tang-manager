@@ -29,6 +29,7 @@ import {
   generateDailyGuestsWithWeights,
   applyReceptionStrategy,
 } from '@/systems/tang-dynamic-traffic';
+import { enqueueModal as enqueueModalSystem, dequeueModal as dequeueModalSystem, clearModalQueue as clearModalQueueSystem, makeModal, peekModal, type ModalItem } from '@/systems/tang-modal-queue';
 import { checkGamblingAddiction, GAMBLING_ADDICTION_DAYS, useLuckyStar } from '@/systems/tang-luck';
 import { handleGuest, markContaminatedGuests, computeStockInfo, BACKLASH_THRESHOLD } from '@/systems/tang-reception';
 import { settleDay as settleDaySystem } from '@/systems/tang-settlement';
@@ -1016,6 +1017,10 @@ function npcIntelContextOf(s: TangManagerStore): Parameters<typeof performBuyInf
   | 'performDiagnosis'
   | 'settleBanquetMenu'
   | 'settleFabricOrder'
+  | 'settleStrategyDelegated'
+  | 'enqueueModal'
+  | 'closeCurrentModal'
+  | 'clearModalQueue'
   | 'showGuestArrival'
   | 'dismissGuestArrival'
 > {
@@ -1261,6 +1266,10 @@ function npcIntelContextOf(s: TangManagerStore): Parameters<typeof performBuyInf
     todayComplaints: 0,
     todayGuestsHandled: 0,
     todayRejectedGuests: 0,
+    todayDelegatedIncome: 0,
+    todayDelegated: [],
+    modalQueue: [],
+    currentModal: null,
     todayMindReadBackfired: 0,
     ancestralEyeActive: false,
     // TANG-TRF-001：动态客流 + 大单预购 + 周级要务
@@ -1989,6 +1998,10 @@ export const useTangManagerStore = create<TangManagerStore>()(
             todayComplaints: 0,
             todayGuestsHandled: 0,
             todayRejectedGuests: 0,
+            todayDelegatedIncome: 0,
+            todayDelegated: [],
+            modalQueue: [],
+            currentModal: null,
             todayMindReadBackfired: 0,
           };
           // TANG-TRF-001：每周一（day%7===1）刷新周级要务与进度（周日打烊已结算奖励）
@@ -3227,6 +3240,54 @@ export const useTangManagerStore = create<TangManagerStore>()(
           })
         );
         return { silverDelta, reputationDelta };
+      },
+      /** 接待策略自动代劳结算（2026-08-05 修复「全托/择要」顺序：进接待即自动代劳，无需手点接待） */
+      settleStrategyDelegated: (rng = Math.random): { settled: number; income: number } => {
+        const s = get();
+        if (s.phase !== 'playing') return { settled: 0, income: 0 };
+        const strategy = s.receptionStrategy ?? 'all';
+        const guests = s.guests ?? [];
+        const toSettle = guests.filter((g) => !g.handled && applyReceptionStrategy(g, strategy, rng).mode === 'delegated');
+        if (toSettle.length === 0) return { settled: 0, income: 0 };
+        let income = 0;
+        const delegated: Array<{ guestName: string; income: number }> = [];
+        const byId = new Map(toSettle.map((g) => [g.id, g]));
+        const nextGuests = guests.map((g) => {
+          const tgt = byId.get(g.id);
+          if (!tgt) return g;
+          const strat = applyReceptionStrategy(tgt, strategy, rng);
+          income += strat.delegatedIncome ?? 0;
+          delegated.push({ guestName: tgt.name, income: strat.delegatedIncome ?? 0 });
+          return { ...tgt, handled: true, incomeEarned: strat.delegatedIncome ?? 0, review: 'good' as const };
+        });
+        const total = Math.round(income * 100) / 100;
+        set((st) =>
+          syncCompat(st, {
+            guests: nextGuests,
+            silver: Math.max(0, st.silver + total),
+            todayDelegatedIncome: (st.todayDelegatedIncome ?? 0) + total,
+            todayDelegated: [...(st.todayDelegated ?? []), ...delegated].slice(-30),
+            eventLog: [...st.eventLog, `delegated-auto:${delegated.length}:${st.day}`],
+          })
+        );
+        return { settled: toSettle.length, income: total };
+      },
+      /** 弹窗入队（自动按优先级排序；打烊结算流程：结算→事件→成就→…） */
+      enqueueModal: (item: ModalItem): void => {
+        const s = get();
+        const next = enqueueModalSystem(s.modalQueue ?? [], item);
+        // 仅在无当前弹窗时置为队首（结算优先入队；正在展示的弹窗不被打断）
+        set({ modalQueue: next, currentModal: s.currentModal ?? peekModal(next) ?? null });
+      },
+      /** 关闭当前弹窗，弹出队列下一个 */
+      closeCurrentModal: (): void => {
+        const s = get();
+        const rest = (s.modalQueue ?? []).filter((m) => m.id !== s.currentModal?.id);
+        set({ currentModal: peekModal(rest) ?? null, modalQueue: rest });
+      },
+      /** 清空队列（异常恢复） */
+      clearModalQueue: (): void => {
+        set({ modalQueue: clearModalQueueSystem(), currentModal: null });
       },
       /** 亲自坐诊（规格书 2.1）：消耗 10 精力 */
       performDiagnosis: (guestId): { ok: boolean; reason?: string } => {
@@ -4986,7 +5047,11 @@ export const useTangManagerStore = create<TangManagerStore>()(
         // 修复（2026-08-06）：startNewDay 清晨钩子会重置 settlementPopupOpen=false 且 todaySettlement=null，
         // 若在其前置开/只置开弹窗，打烊结算面板会立刻被关闭或因 settle=null 不渲染、永不显示。
         // 须在 startNewDay 之后同时恢复弹窗开关与结算数据。
-        set({ settlementPopupOpen: true, todaySettlement: { ...result.settlement, netIncome } });
+        set({ todaySettlement: { ...result.settlement, netIncome } });
+        // 弹窗队列（2026-08-05）：结算→次日卦象→要务逐一弹出，不再堆叠
+        get().enqueueModal(makeModal('settlement'));
+        get().enqueueModal(makeModal('hexagram'));
+        get().enqueueModal(makeModal('daily_task'));
         // 阶段推进（1.1）：settleDay 后判定；seized/破产等非 playing 阶段不推进
         const after = get();
         if (after.phase === 'playing') {

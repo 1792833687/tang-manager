@@ -36,9 +36,10 @@ function effectText(effect: HexagramEffect): string {
 
 export function HexagramCard(): React.ReactElement | null {
   const open = useTangManagerStore((s) => s.hexagramCardOpen);
+  const queueActive = useTangManagerStore((s) => s.currentModal !== null);
   const todayId = useTangManagerStore((s) => s.todayHexagram?.id ?? null);
   const dismiss = useTangManagerStore((s) => s.dismissHexagramCard);
-  if (!open) return null;
+  if (queueActive || !open) return null;
   const hex = todayId ? hexagramById(todayId) : null;
   if (!hex) return null;
   return (

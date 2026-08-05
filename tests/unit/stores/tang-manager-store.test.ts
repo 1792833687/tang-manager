@@ -483,11 +483,11 @@ describe('Step 5b · 打烊结算弹窗（settleDay 后置开）', () => {
     store.initByDifficulty('B');
     expect(useTangManagerStore.getState().settlementPopupOpen).toBe(false);
     store.settleDay();
-    expect(useTangManagerStore.getState().settlementPopupOpen).toBe(true);
-    expect(useTangManagerStore.getState().todaySettlement).not.toBeNull(); // 结算数据在 startNewDay 后保留（弹窗可渲染）
-    // dismiss 后可关闭
-    useTangManagerStore.getState().dismissSettlementPopup();
-    expect(useTangManagerStore.getState().settlementPopupOpen).toBe(false);
+    // 2026-08-05：弹窗队列接管——结算入队为队首
+    expect(useTangManagerStore.getState().currentModal?.type).toBe('settlement');
+    expect(useTangManagerStore.getState().todaySettlement).not.toBeNull();
+    useTangManagerStore.getState().clearModalQueue();
+    expect(useTangManagerStore.getState().currentModal).toBeNull();
   });
 });
 describe('Step 5b · 今日要务与阿昭涨薪（2026-08-06 补 UI 后的逻辑）', () => {
@@ -563,5 +563,68 @@ describe('Step 5b · 产业玩法结算（2026-08-06 关联接线）', () => {
     const bad = store.settleFabricOrder({ match: 30, tier: 'refund' });
     expect(bad.silverDelta).toBe(-4);
     expect(bad.reputationDelta).toBe(-3);
+  });
+});
+describe('Step 5b · 接待策略自动代劳（2026-08-05 修复顺序）', () => {
+  it('全托伙计：settleStrategyDelegated 代劳全部未接待客人，计入代劳收入', () => {
+    const store = useTangManagerStore.getState();
+    store.initByDifficulty('B');
+    useTangManagerStore.setState({ receptionStrategy: 'delegate' });
+    const guests = useTangManagerStore.getState().guests;
+    const unhandled = guests.filter((g) => !g.handled).length;
+    const silverBefore = useTangManagerStore.getState().silver;
+    const r = store.settleStrategyDelegated(() => 0.5);
+    expect(r.settled).toBe(unhandled);
+    expect(useTangManagerStore.getState().guests.every((g) => g.handled)).toBe(true);
+    expect(useTangManagerStore.getState().todayDelegatedIncome).toBeGreaterThan(0);
+    expect(useTangManagerStore.getState().silver).toBeGreaterThan(silverBefore);
+  });
+
+  it('择要接待：仅代劳普通客人，大单/特殊保留', () => {
+    const store = useTangManagerStore.getState();
+    store.initByDifficulty('B');
+    useTangManagerStore.setState({ receptionStrategy: 'priority' });
+    const r = store.settleStrategyDelegated(() => 0.5);
+    const after = useTangManagerStore.getState();
+    expect(r.settled).toBeGreaterThan(0);
+    expect(after.guests.some((g) => !g.handled)).toBe(true); // 大单/特殊保留
+  });
+
+  it('亲力亲为：不代劳任何客人', () => {
+    const store = useTangManagerStore.getState();
+    store.initByDifficulty('B');
+    useTangManagerStore.setState({ receptionStrategy: 'all' });
+    const r = store.settleStrategyDelegated(() => 0.5);
+    expect(r.settled).toBe(0);
+  });
+});
+describe('Step 5b · 弹窗队列（2026-08-05）', () => {
+  it('enqueueModal 后 currentModal 为队首（结算优先）', () => {
+    const store = useTangManagerStore.getState();
+    store.initByDifficulty('B');
+    store.enqueueModal({ id: 's', type: 'settlement', priority: 1 });
+    store.enqueueModal({ id: 'h', type: 'hexagram', priority: 5 });
+    expect(useTangManagerStore.getState().currentModal?.type).toBe('settlement');
+  });
+
+  it('closeCurrentModal 逐个弹出：结算→卦象', () => {
+    const store = useTangManagerStore.getState();
+    store.initByDifficulty('B');
+    store.enqueueModal({ id: 's', type: 'settlement', priority: 1 });
+    store.enqueueModal({ id: 'h', type: 'hexagram', priority: 5 });
+    expect(useTangManagerStore.getState().currentModal?.type).toBe('settlement');
+    store.closeCurrentModal();
+    expect(useTangManagerStore.getState().currentModal?.type).toBe('hexagram');
+    store.closeCurrentModal();
+    expect(useTangManagerStore.getState().currentModal).toBeNull();
+  });
+
+  it('clearModalQueue 清空队列与当前弹窗', () => {
+    const store = useTangManagerStore.getState();
+    store.initByDifficulty('B');
+    store.enqueueModal({ id: 's', type: 'settlement', priority: 1 });
+    store.clearModalQueue();
+    expect(useTangManagerStore.getState().modalQueue).toEqual([]);
+    expect(useTangManagerStore.getState().currentModal).toBeNull();
   });
 });

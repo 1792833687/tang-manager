@@ -48,10 +48,7 @@ export const TANG_FEATURES: readonly TangFeatureDef[] = [
   {
     id: 'staff',
     name: '伙计',
-    conditions: [
-      { type: 'day', value: 3, hint: '第 3 日起，可雇佣伙计' },
-      { type: 'employees', value: 1, hint: '雇得首位伙计' },
-    ],
+    conditions: [{ type: 'always', value: 0, hint: '伙计面板开局即见（排班/涨薪等操作另行解锁）' }],
   },
   { id: 'bank', name: '钱庄', conditions: [{ type: 'day', value: 5, hint: '第 5 日起，钱庄开门' }] },
   {

@@ -2069,6 +2069,8 @@ export interface TangGameState {
   activePeakChallenge?: PeakChallengeType | null;
   /** 多周目传承效果（v1.2 模块三：开局应用） */
   legacyInheritance?: LegacyEffect | null;
+  /** 键盘快捷键开关（v1.2 修复：默认关闭，输入框中不触发） */
+  keyboardShortcutsEnabled?: boolean;
   /** 跨周目保留物品（开局手札展示） */
   crossGameItems?: string[];
   /** 巅峰挑战完成记录 */
@@ -2330,6 +2332,8 @@ export interface TangManagerStore extends TangGameState {
   applyLegacyInheritance: () => { effect: LegacyEffect | null; items: string[] };
   /** 记录一局结局到传承存档（v1.2 模块三：结局时调用） */
   recordLegacyRun: () => void;
+  /** 切换键盘快捷键开关 */
+  toggleKeyboardShortcuts: () => void;
   /** 记录 NPC 互动（v1.2：行为记忆/连续效果） */
   recordNPCInteraction: (npcId: string, actionType: NPCInteraction['actionType'], description: string) => void;
   /** 秘密被发现（v1.2：按好感产生态度变化） */

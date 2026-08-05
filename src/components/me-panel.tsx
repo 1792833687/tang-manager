@@ -154,6 +154,13 @@ export function MePanel(): React.ReactElement {
             <InfoCell label="员工数" value="1（阿昭）" />
             <InfoCell label="月息" value={formatMoney(state.monthlyInterest)} />
           </div>
+          {/* 键盘快捷键开关（v1.2 修复：默认关闭，避免输入数字误跳面板） */}
+          <div className="flex items-center justify-between rounded-md px-2 py-1.5" style={{ backgroundColor: ANCIENT.background, border: `1px solid ${ANCIENT.border}` }}>
+            <span className="text-xs" style={{ color: ANCIENT.secondary }}>键盘快捷键（数字 1-9 切面板）</span>
+            <button type="button" onClick={() => state.toggleKeyboardShortcuts()} className="rounded px-3 py-0.5 text-xs font-bold tracking-widest" style={{ backgroundColor: state.keyboardShortcutsEnabled ? ANCIENT.primary : ANCIENT.border, color: '#FFFFFF' }}>
+              {state.keyboardShortcutsEnabled ? '开启' : '关闭'}
+            </button>
+          </div>
           {/* 手札叙事（AI）开关（4.4）— 关闭/离线/失败时叙事降级为预设模板，不影响经营 */}
           <div className="flex items-center justify-between rounded-md px-2 py-1.5" style={{ backgroundColor: ANCIENT.background, border: `1px solid ${ANCIENT.border}` }}>
             <span className="text-xs" style={{ color: ANCIENT.secondary }}>手札叙事（AI）</span>

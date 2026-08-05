@@ -10,7 +10,7 @@ import { getStoredApiKey, hasStoredApiKey, OpenRouterClient } from '@/infrastruc
 import { modeManager } from '@/infrastructure/mode/ModeManager';
 import type { LLMConfig, OpenRouterMessage } from '@/systems/dialogue/types';
 import { loadTangAiConfig } from '@/systems/tang-api-test';
-import { shouldSkipAi } from '@/systems/tang-narrator';
+import { shouldSkipAi, reportAiLog } from '@/systems/tang-narrator';
 import { shopDisplayName } from '@/config/tang-shop-types';
 import { GUEST_TYPE_LABEL } from '@/config/tang-guest-content';
 import { pickTemplate } from '@/config/tang-dialogue-templates';
@@ -161,7 +161,9 @@ export async function generateDialogueOptions(
   opts: { enabled?: boolean } = {}
 ): Promise<AIDialogueOptions> {
   const enabled = opts.enabled ?? true;
+  const t0 = Date.now();
   if (!enabled || !(await aiAvailable())) {
+    reportAiLog({ type: 'dialogue_options', ok: true, latencyMs: Date.now() - t0, source: 'template' });
     return pickFallbackOptions(shopType);
   }
   const tianji = await loadTangAiConfig();
@@ -175,8 +177,11 @@ export async function generateDialogueOptions(
   let acc = '';
   try {
     await new OpenRouterClient({ apiKey }).streamChatCompletion(config, messages, (c) => { acc += c; });
-    return parseDialogueOptionsJson(acc.trim()) ?? pickFallbackOptions(shopType);
+    const parsed = parseDialogueOptionsJson(acc.trim());
+    reportAiLog({ type: 'dialogue_options', ok: !!parsed, latencyMs: Date.now() - t0, source: parsed ? 'ai' : 'template' });
+    return parsed ?? pickFallbackOptions(shopType);
   } catch {
+    reportAiLog({ type: 'dialogue_options', ok: false, latencyMs: Date.now() - t0, source: 'template' });
     return pickFallbackOptions(shopType);
   }
 }
@@ -190,8 +195,10 @@ export async function generateGuestArrival(
   opts: { enabled?: boolean } = {}
 ): Promise<{ content: string; source: 'ai' | 'template' }> {
   const enabled = opts.enabled ?? true;
+  const t0 = Date.now();
   const fallbackContent = pickArrivalTemplate(shopType).replace('{guestName}', guest.name).replace('{description}', guest.description ?? '');
   if (!enabled || !(await aiAvailable())) {
+    reportAiLog({ type: 'guest_arrival', ok: true, latencyMs: Date.now() - t0, source: 'template' });
     return { content: fallbackContent, source: 'template' };
   }
   const tianji = await loadTangAiConfig();
@@ -207,8 +214,11 @@ export async function generateGuestArrival(
   try {
     await new OpenRouterClient({ apiKey }).streamChatCompletion(config, messages, (c) => { acc += c; });
     const text = acc.trim();
-    return text.length > 0 ? { content: text, source: 'ai' } : { content: fallbackContent, source: 'template' };
+    const ok = text.length > 0;
+    reportAiLog({ type: 'guest_arrival', ok, latencyMs: Date.now() - t0, source: ok ? 'ai' : 'template' });
+    return ok ? { content: text, source: 'ai' } : { content: fallbackContent, source: 'template' };
   } catch {
+    reportAiLog({ type: 'guest_arrival', ok: false, latencyMs: Date.now() - t0, source: 'template' });
     return { content: fallbackContent, source: 'template' };
   }
 }
@@ -220,7 +230,9 @@ export async function generateGuestResponse(
   opts: { enabled?: boolean } = {}
 ): Promise<AIGuestResponse> {
   const enabled = opts.enabled ?? true;
+  const t0 = Date.now();
   if (!enabled || !(await aiAvailable())) {
+    reportAiLog({ type: 'guest_response', ok: true, latencyMs: Date.now() - t0, source: 'template' });
     return pickFallbackGuestResponse(guest);
   }
   const tianji = await loadTangAiConfig();
@@ -234,8 +246,11 @@ export async function generateGuestResponse(
   let acc = '';
   try {
     await new OpenRouterClient({ apiKey }).streamChatCompletion(config, messages, (c) => { acc += c; });
-    return parseGuestResponseJson(acc.trim()) ?? pickFallbackGuestResponse(guest);
+    const parsed = parseGuestResponseJson(acc.trim());
+    reportAiLog({ type: 'guest_response', ok: !!parsed, latencyMs: Date.now() - t0, source: parsed ? 'ai' : 'template' });
+    return parsed ?? pickFallbackGuestResponse(guest);
   } catch {
+    reportAiLog({ type: 'guest_response', ok: false, latencyMs: Date.now() - t0, source: 'template' });
     return pickFallbackGuestResponse(guest);
   }
 }

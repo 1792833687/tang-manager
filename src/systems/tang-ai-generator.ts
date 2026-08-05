@@ -9,6 +9,7 @@ import { modeManager } from '@/infrastructure/mode/ModeManager';
 import type { LLMConfig, OpenRouterMessage } from '@/systems/dialogue/types';
 import { loadTangAiConfig } from '@/systems/tang-api-test';
 import { shouldSkipAi, type NarrationOptions } from '@/systems/tang-narrator';
+import { reportAiLog } from '@/systems/tang-narrator';
 
 /** AI 生成内容类型（5.1） */
 export type AiContentType =
@@ -62,6 +63,7 @@ export async function generateAiText(
   // 优先级：类型开关 → 在线 → API Key
   if (!enabled || shouldSkipAi({ enabled: true }, modeManager.isOnline, hasKey)) {
     opts.onLog?.({ type, ok: true, latencyMs: Date.now() - started, source: 'template' });
+    reportAiLog({ type, ok: true, latencyMs: Date.now() - started, source: 'template' });
     return { text: params.fallback, source: 'template' };
   }
 
@@ -89,10 +91,12 @@ export async function generateAiText(
     const text = accumulated.trim();
     const ok = text.length > 0;
     opts.onLog?.({ type, ok, latencyMs: Date.now() - started, source: ok ? 'ai' : 'template' });
+    reportAiLog({ type, ok, latencyMs: Date.now() - started, source: ok ? 'ai' : 'template' });
     return ok ? { text, source: 'ai' } : { text: params.fallback, source: 'template' };
   } catch (error) {
     console.warn('[tang-ai-generator] AI 生成失败，降级模板：', error);
     opts.onLog?.({ type, ok: false, latencyMs: Date.now() - started, source: 'template' });
+    reportAiLog({ type, ok: false, latencyMs: Date.now() - started, source: 'template' });
     return { text: params.fallback, source: 'template' };
   }
 }

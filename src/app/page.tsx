@@ -287,6 +287,11 @@ export default function TangManagerPage(): React.ReactElement {
   useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {
       if (phase !== 'playing') return;
+      // v1.2 修复：输入框聚焦时忽略快捷键（调价/兑换输入数字不跳转面板）
+      const ae = document.activeElement;
+      if (ae instanceof HTMLInputElement || ae instanceof HTMLTextAreaElement || ae?.getAttribute('contenteditable') === 'true') return;
+      // v1.2：快捷键默认关闭，需在「我」面板手动开启
+      if (!useTangManagerStore.getState().keyboardShortcutsEnabled) return;
       const idx =
         e.key >= '1' && e.key <= '9'
           ? Number(e.key) - 1

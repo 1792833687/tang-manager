@@ -24,8 +24,30 @@ import { buildGuestReply, MOOD_CONFIGS } from '@/systems/tang-dialogue-engine';
 import type { Guest, ShopType } from '@/types/tang-manager';
 import type { GuestMood } from '@/types/tang-dialogue';
 
+/** AI 调用日志条目 */
+export interface AiLogEntry {
+  type: string;
+  ok: boolean;
+  latencyMs: number;
+  source: 'ai' | 'template';
+}
+
+let aiLogSink: ((e: AiLogEntry) => void) | null = null;
+
+/** 注册全局 AI 日志上报（store 初始化时调用；修复「AI 调用始终为 0」） */
+export function setAiLogSink(fn: (e: AiLogEntry) => void): void {
+  aiLogSink = fn;
+}
+
+/** 上报一条 AI 调用日志 */
+export function reportAiLog(e: AiLogEntry): void {
+  aiLogSink?.(e);
+}
+
 /** generateNarration 可选项（createClient 便于测试注入） */
 export interface NarrationOptions {
+  /** AI 调用日志类型（供全局日志 sink 上报） */
+  logType?: string;
   /** 是否启用 AI 叙事（默认 true；false → 直接降级模板） */
   enabled?: boolean;
   /** 模型 id（默认 openai/gpt-4o-mini） */
@@ -200,10 +222,12 @@ async function runDialogueAi(
   fallback: string,
   opts: NarrationOptions
 ): Promise<string> {
+  const startedAt = Date.now();
   const tianji = await loadTangAiConfig();
   const tianjiReady = !!tianji?.configured && !!tianji?.apiKey;
   const hasKey = tianjiReady || hasStoredApiKey();
   if (shouldSkipAi(opts, modeManager.isOnline, hasKey)) {
+    reportAiLog({ type: opts.logType ?? 'narration', ok: true, latencyMs: Date.now() - startedAt, source: 'template' });
     return fallback;
   }
   const model = tianjiReady ? tianji!.model : (opts.model ?? DEFAULT_MODEL);
@@ -227,9 +251,12 @@ async function runDialogueAi(
       opts.onChunk?.(chunk);
     });
     const text = accumulated.trim();
-    return text.length > 0 ? text : fallback;
+    const ok = text.length > 0;
+    reportAiLog({ type: opts.logType ?? 'narration', ok, latencyMs: Date.now() - startedAt, source: ok ? 'ai' : 'template' });
+    return ok ? text : fallback;
   } catch (error) {
     console.warn('[tang-narrator] 对话 AI 生成失败，降级模板：', error);
+    reportAiLog({ type: opts.logType ?? 'narration', ok: false, latencyMs: Date.now() - startedAt, source: 'template' });
     return fallback;
   }
 }

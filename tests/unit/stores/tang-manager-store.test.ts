@@ -269,18 +269,19 @@ describe('v1.0 功能解锁接线（TANG-POLISH-001 模块二/五）', () => {
     expect(s.unlockedFeatures).toEqual({});
   });
 
-  it('initByDifficulty 后 unlockedFeatures 为空；checkFeatureUnlock 开局解锁 always 四功能', () => {
+  it('initByDifficulty 后 unlockedFeatures 为空；checkFeatureUnlock 开局解锁 always 五功能', () => {
     useTangManagerStore.getState().initByDifficulty('B');
     const s = useTangManagerStore.getState();
     expect(s.unlockedFeatures ?? {}).toEqual({});
     const newly = useTangManagerStore.getState().checkFeatureUnlock();
-    // always 四功能：me/reception/shelf/ledger
-    expect(newly).toEqual(expect.arrayContaining(['me', 'reception', 'shelf', 'ledger']));
+    // always 五功能：me/reception/shelf/ledger/staff
+    expect(newly).toEqual(expect.arrayContaining(['me', 'reception', 'shelf', 'ledger', 'staff']));
     const after = useTangManagerStore.getState();
     expect(after.unlockedFeatures?.['me']).toBe(true);
     expect(after.unlockedFeatures?.['reception']).toBe(true);
     expect(after.unlockedFeatures?.['shelf']).toBe(true);
     expect(after.unlockedFeatures?.['ledger']).toBe(true);
+    expect(after.unlockedFeatures?.['staff']).toBe(true);
   });
 
   it('checkFeatureUnlock 幂等：重复调用不重复返回已解锁功能', () => {
@@ -289,20 +290,14 @@ describe('v1.0 功能解锁接线（TANG-POLISH-001 模块二/五）', () => {
     const second = useTangManagerStore.getState().checkFeatureUnlock();
     // 第二次应只返回新解锁（无 always 之外的增量），且不重复 already 中的 me 等
     for (const id of second) {
-      expect(['me', 'reception', 'shelf', 'ledger']).not.toContain(id);
+      expect(['me', 'reception', 'shelf', 'ledger', 'staff']).not.toContain(id);
     }
   });
 
-  it('startNewDay 清晨钩子自动调用 checkFeatureUnlock（第 3 天 + 员工 → staff 解锁）', () => {
+  it('startNewDay 清晨钩子自动调用 checkFeatureUnlock（staff always：day1 即解锁，无需员工）', () => {
     useTangManagerStore.getState().initByDifficulty('B');
-    useTangManagerStore.getState().checkFeatureUnlock(); // day1：always 四功能
-    useTangManagerStore.setState({ day: 2 });
-    useTangManagerStore.getState().startNewDay(); // day 2 → 3
-    // 模拟已雇员工
-    useTangManagerStore.setState((s) => ({
-      employees: s.employees.length === 0 ? [{ id: 'emp1', name: '赵三', type: 'waiter', salary: 20, satisfaction: 60, skills: [], shift: 'full' } as never] : s.employees,
-    }));
-    useTangManagerStore.getState().checkFeatureUnlock();
+    useTangManagerStore.getState().checkFeatureUnlock(); // day1：always 五功能（含 staff）
+    useTangManagerStore.getState().startNewDay(); // 清晨钩子再次检查（day 1 → 2）
     const after = useTangManagerStore.getState();
     expect(after.unlockedFeatures?.['staff']).toBe(true);
   });

@@ -3,7 +3,7 @@
  *
  * 验证 points（systems/tang-feature-unlock.ts + config/tang-feature-ids.ts）：
  * 1. checkFeatureUnlock：多条件 and 关系；返回「本次新解锁」；已解锁不重复
- * 2. 12 个 featureId 的解锁条件（staff day≥3+员工≥1 / bank day≥5 / map 声望≥100+day≥10 /
+ * 2. 12 个 featureId 的解锁条件（staff always / bank day≥5 / map 声望≥100+day≥10 /
  *    faction 声望≥50+day≥8 / caravan 阶段≥2+声望≥200 / politics 声望≥700+阶段≥3 /
  *    journal day≥15+成就≥1 / achievement 成就≥1；me/reception/shelf/ledger always）
  * 3. getUnlockCondition：未解锁返回首条未满足条件；已解锁/无功能返回 null
@@ -31,21 +31,19 @@ function baseInput(over: Partial<FeatureUnlockInput> = {}): FeatureUnlockInput {
 }
 
 describe('TANG-POLISH-001 模块二：checkFeatureUnlock 判定', () => {
-  it('开局（day=1）仅解锁 always 四功能：me/reception/shelf/ledger', () => {
+  it('开局（day=1）仅解锁 always 五功能：me/reception/shelf/ledger/staff', () => {
     const newly = checkFeatureUnlock(emptyKnown(), baseInput());
-    expect(newly.sort()).toEqual(['ledger', 'me', 'reception', 'shelf']);
+    expect(newly.sort()).toEqual(['ledger', 'me', 'reception', 'shelf', 'staff']);
   });
 
   it('已解锁记录中的功能不会重复返回', () => {
-    const known = { me: true, reception: true, shelf: true, ledger: true };
+    const known = { me: true, reception: true, shelf: true, ledger: true, staff: true };
     const newly = checkFeatureUnlock(known, baseInput());
     expect(newly).toEqual([]);
   });
 
-  it('staff：day≥3 且 员工≥1 才解锁（and 关系）', () => {
-    expect(checkFeatureUnlock(emptyKnown(), baseInput({ day: 3, employeesCount: 0 }))).not.toContain('staff');
-    expect(checkFeatureUnlock(emptyKnown(), baseInput({ day: 2, employeesCount: 1 }))).not.toContain('staff');
-    const newly = checkFeatureUnlock(emptyKnown(), baseInput({ day: 3, employeesCount: 1 }));
+  it('staff：always 解锁（开局 day=1 无员工也解锁）', () => {
+    const newly = checkFeatureUnlock(emptyKnown(), baseInput({ day: 1, employeesCount: 0 }));
     expect(newly).toContain('staff');
   });
 
@@ -96,8 +94,8 @@ describe('TANG-POLISH-001 模块二：isFeatureUnlocked / getUnlockCondition', (
   });
 
   it('getUnlockCondition：未解锁返回首条未满足条件描述', () => {
-    // staff 未解锁：day<3 时提示第 3 日起
-    expect(getUnlockCondition('staff', emptyKnown(), baseInput({ day: 1, employeesCount: 1 }))).toContain('第 3 日');
+    // staff 为 always：恒解锁 → getUnlockCondition 返回 null
+    expect(getUnlockCondition('staff', emptyKnown(), baseInput({ day: 1, employeesCount: 1 }))).toBeNull();
     // map 未解锁：声望不足时提示声望 ≥ 100
     expect(getUnlockCondition('map', emptyKnown(), baseInput({ day: 10, reputation: 0 }))).toContain('声望');
   });

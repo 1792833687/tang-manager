@@ -33,6 +33,7 @@ import { enqueueModal as enqueueModalSystem, dequeueModal as dequeueModalSystem,
 import { generateDailyIntelligence as generateDailyIntelligenceSystem, investigateIntelligence, updateSourceReliability, isIntelligenceExpired, type Intelligence } from '@/systems/tang-intelligence';
 import { recordInteraction, consecutiveActionCount, onSecretDiscovered as onSecretDiscoveredSystem, onBottomLineCrossed, type NPCInteraction, type SecretReaction } from '@/systems/tang-npc-memory';
 import { loadLegacySave, saveLegacySave, pushRunRecord, type LegacySave } from '@/infrastructure/legacy-storage';
+import { setAiLogSink } from '@/systems/tang-narrator';
 import { canStartPeakChallenge, peakSuccessRate, resolvePeakChallenge as resolvePeakChallengeSystem, peakOutcome, type PeakState } from '@/systems/tang-peak-challenges';
 import { computeLegacyInheritance, checkMultiRunAchievements } from '@/systems/tang-legacy-inheritance';
 import type { LegacyEffect } from '@/config/tang-legacy-inheritance';
@@ -1024,6 +1025,7 @@ function npcIntelContextOf(s: TangManagerStore): Parameters<typeof performBuyInf
   | 'resolvePeakChallenge'
   | 'applyLegacyInheritance'
   | 'recordLegacyRun'
+  | 'toggleKeyboardShortcuts'
   | 'createDialogueContext'
   | 'updateDialogueEmotion'
   | 'clearDialogueContext'
@@ -1257,6 +1259,7 @@ function npcIntelContextOf(s: TangManagerStore): Parameters<typeof performBuyInf
     peakBuffs: [],
     legacyInheritance: null,
     crossGameItems: [],
+    keyboardShortcutsEnabled: false,
     dailyIntelligence: [],
     intelligenceSources: {},
     dialogueContexts: {},
@@ -1512,6 +1515,9 @@ function applyInvestmentMaturity(
 
 /** 持久化键名（当前版本 16：TANG-TUT-001 新增引导字段；历史迁移见 persist migrate 注释） */
 const PERSIST_NAME = 'tang-manager-store';
+
+// 全局 AI 调用日志 sink（修复「AI 调用始终为 0」：所有叙事调用统一上报）
+setAiLogSink((e) => { try { useTangManagerStore.getState().recordAiLog(e); } catch { /* store 未就绪 */ } });
 
 export const useTangManagerStore = create<TangManagerStore>()(
   persist(
@@ -2004,6 +2010,7 @@ export const useTangManagerStore = create<TangManagerStore>()(
     peakBuffs: [],
     legacyInheritance: null,
     crossGameItems: [],
+    keyboardShortcutsEnabled: false,
             dailyIntelligence: [],
             intelligenceSources: {},
             dialogueContexts: {},
@@ -3338,6 +3345,10 @@ export const useTangManagerStore = create<TangManagerStore>()(
         const { save: next } = pushRunRecord(save, run);
         const achievements = checkMultiRunAchievements(next.runs);
         saveLegacySave({ ...next, achievements: [...new Set([...(next.achievements ?? []), ...achievements])] });
+      },
+      /** 切换键盘快捷键开关（v1.2 修复：默认关闭，输入框中不触发） */
+      toggleKeyboardShortcuts: (): void => {
+        set((s) => ({ keyboardShortcutsEnabled: !s.keyboardShortcutsEnabled }));
       },
       /** 创建 AI 对话上下文（规格书 5.4） */
       createDialogueContext: (guestId, guestInfo): void => {

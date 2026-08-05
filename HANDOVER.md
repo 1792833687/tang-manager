@@ -131,7 +131,7 @@
 ## 四、测试基线
 
 - 源项目：**1567 用例全绿**（119 文件）
-- 新项目：91 测试文件；实测 **1137 用例全绿**（2026-08-06 P2 里程碑引导验收：tsc 零错误 → 全量 1137 → build 串行通过 → 已上线）
+- 新项目：101 测试文件；实测 **1233 用例全绿**（2026-08-05 v1.2 四模块 + 接待流程修复验收：tsc 零错误 → 全量 1233 → build 串行通过 → 已上线）
 - vitest.config.ts 已裁剪（移除 memory/dialogue/map 覆盖率阈值），setup.ts 已去 map 夹具
 - tests 从 tsconfig 排除（沿用源做法，tsc 只查 src）
 - 稳定姿势：pool threads / minWorkers 1 / maxWorkers 2 / testTimeout 30s（已固化 config）
@@ -194,7 +194,7 @@
 | src/theme/tokens.ts | ANCIENT 设计令牌（唯一事实源） |
 | public/sw.js | network-first Service Worker（v7.0.0） |
 | scripts/validate-game-data.mjs | 数值校验脚本（开局容量/30 天不破产） |
-| tests/unit/ | 91 测试文件（1137 用例全绿） |
+| tests/unit/ | 101 测试文件（1233 用例全绿） |
 
 
 ---
@@ -426,3 +426,15 @@ tsc 零错误 → 全量 **1142 用例全绿（92 文件）** → build 静态�
 
 ## v1.2 世界活化 · 四模块总览（已完成）
 模块一 市井情报系统（P0）· 模块二 NPC 双向情绪与秘密（P0）· 模块三 多周目传承（P1）· 模块四 产业巅峰挑战（P1）——情报可交互、NPC 有记忆、周目有传承、产业有终极目标，世界活化闭环达成。
+
+## 接待流程修复与经营深度优化（2026-08-05 · 规格书执行 + P0 修复）
+
+执行《接待流程修复与经营深度优化》规格书并修复用户反馈 P0 bug「AI 叙事的调用始终为 0」。
+
+| 项 | 内容 | 关键改动 |
+|---|---|---|
+| **P0 · AI 调用计数恒 0 修复** | 天机阁调试面板「最近 N 次请求」恒为 0 | 根因：面板只统计带 `onLog` 的调用（留言簿/月度总结），而叙事卷轴 `runDialogueAi` 与接待对话 `tang-ai-dialogue` 均不上报。修复：`tang-narrator.ts` 新增全局 `AiLogEntry`/`setAiLogSink`/`reportAiLog`，`runDialogueAi` 三路径（跳过/成功/失败）统一上报；`tang-ai-generator.ts` 的 `generateAiText` 三处 return 补上报；`tang-ai-dialogue.ts` 的 `generateDialogueOptions`/`generateGuestArrival`/`generateGuestResponse` 三函数补上报（skip/成功/失败全路径）；store 注册全局 sink 写入 `aiGenerationLog` |
+| **模块三 · 快捷键守卫** | 快捷键误触面板（输入数字跳转） | 新增 `keyboardShortcutsEnabled`（默认 **false**）+ `toggleKeyboardShortcuts`；「我」面板新增开关；`page.tsx` keydown：输入框聚焦（input/textarea/contenteditable）直接 return；未开启直接 return |
+| **模块七 · 员工面板开局解锁** | 伙计面板开局即可见 | `tang-feature-ids.ts` staff 由「第 3 日+员工≥1」改为 `always`（排班/涨薪等操作仍按原逻辑）；适配 feature-unlock/store 测试 |
+
+**验收**：tsc 零错误 → 全量 **1233 用例全绿**（101 文件，零回归）→ build 静态导出成功（basePath=/tang-manager，5 路由）。Playwright 真机校验 12 项：开局全流程（身份→店型→难度→开张）、伙计面板开局可开、调价输入数字不跳转（输入框守卫）、**天机阁显示「最近 3 次请求」>0**（修复前恒 0）；唯一非通过项为测试工具自动点按「关闭」误触快捷键开关所致（功能本身正常）。
